@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CarolIA • icarolinaporto</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div>
+        <div class="eyebrow">TWITCH EVENTSUB • RENDER • STREAMELEMENTS $(ai)</div>
+        <h1>CarolIA <span>icarolinaporto</span></h1>
+        <p>Sem OBS. Seu login de MOD lê o chat; o StreamElements gera a IA e publica pelo bot configurado no canal.</p>
+      </div>
+      <div class="status-card">
+        <span id="dot" class="dot"></span>
+        <div><strong id="twitchStatus">Carregando…</strong><small id="queueStatus"></small></div>
+      </div>
+    </header>
+
+    <section id="login" class="card login">
+      <h2>Entrar no painel</h2>
+      <p>Use a senha <code>PANEL_KEY</code> configurada no Render.</p>
+      <div class="row"><input id="panelKey" type="password" placeholder="Senha do painel"><button id="loginBtn">Entrar</button></div>
+      <div id="loginMsg" class="msg"></div>
+    </section>
+
+    <div id="app" class="hidden">
+      <section class="toolbar card">
+        <label class="switch-line"><input id="enabled" type="checkbox"><span class="switch"></span><strong>IA automática</strong></label>
+        <div class="preset-buttons">
+          <button data-preset="suave">😇 Suave</button>
+          <button data-preset="normal">🙂 Normal</button>
+          <button data-preset="zueira">😂 Zueira</button>
+          <button data-preset="sensual" class="sensual">💋 Sensual</button>
+          <button data-preset="safadinha" class="sensual">😏 Safadinha</button>
+          <button data-preset="insana">🤪 Insana</button>
+          <button data-preset="caos" class="danger">💀 Caos Pesado</button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Personalidade</h2>
+          <div class="two">
+            <label>Nome da IA<input id="aiName" maxlength="30"></label>
+            <label>Tamanho<select id="responseLength"><option value="short">Curta</option><option value="medium">Média</option></select></label>
+          </div>
+          <label>Personalidade personalizada<textarea id="customPersonality" rows="3" maxlength="220"></textarea></label>
+          <div id="sliders"></div>
+          <div class="two">
+            <label>Palavrões<select id="profanity"><option value="0">Desligado</option><option value="1">Leve</option><option value="2">Médio</option><option value="3">Alto</option></select></label>
+            <label class="check padded"><input id="adultFlirt" type="checkbox"> Flerte adulto / duplo sentido leve</label>
+          </div>
+          <label class="check"><input id="mentionUser" type="checkbox"> Marcar usuário com @</label>
+          <p class="hint warning">Sensual/Safadinha = provocação e duplo sentido não explícitos. O sistema instrui a IA a não gerar sexo explícito, assédio ou sexualização de menores.</p>
+        </article>
+
+        <article class="card">
+          <h2>Comportamento automático</h2>
+          <div class="range-line"><label>Chance de responder</label><output id="answerChanceOut"></output></div>
+          <input id="answerChance" type="range" min="0" max="100">
+          <div class="two">
+            <label>Cooldown (seg)<input id="cooldownSeconds" type="number" min="0" max="600"></label>
+            <label>Mensagem expira (seg)<input id="maxQueueAgeSeconds" type="number" min="15" max="900"></label>
+          </div>
+          <div class="two">
+            <label>Mín. caracteres<input id="minMessageChars" type="number" min="1" max="80"></label>
+            <label>Tamanho da fila<input id="queueSize" type="number" min="5" max="200"></label>
+          </div>
+          <label class="check"><input id="preferQuestions" type="checkbox"> Priorizar perguntas</label>
+          <label class="check"><input id="preferMentions" type="checkbox"> Priorizar Carol / IA</label>
+          <label class="check"><input id="preferFlirtyMessages" type="checkbox"> Priorizar mensagens de flerte</label>
+          <label class="check"><input id="ignoreCommands" type="checkbox"> Ignorar mensagens iniciadas por ! / .</label>
+          <label class="check"><input id="ignoreBroadcaster" type="checkbox"> Ignorar mensagens da icarolinaporto</label>
+          <label class="check"><input id="ignoreBots" type="checkbox"> Ignorar bots/lista abaixo</label>
+          <label>Usuários ignorados<textarea id="ignoreUsers" rows="5" placeholder="um por linha"></textarea></label>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>1. Twitch — leitura sem OBS</h2>
+          <div class="connection-box">
+            <div><span class="mini-dot" id="twitchMiniDot"></span><strong id="twitchIdentity">Não conectada</strong></div>
+            <small id="twitchDetail">Aguardando configuração.</small>
+          </div>
+          <p>Autorize <b>a sua própria conta Twitch</b>, que é MOD da <b>icarolinaporto</b>. A conta da sua amiga e o <b>icarolzinhabot</b> não são usados para ler o chat.</p>
+          <button id="connectTwitch" class="primary">Conectar minha Twitch (MOD)</button>
+          <button id="reconnectTwitch">Reconectar EventSub</button>
+          <label>Callback URL para cadastrar no Twitch Developer Console</label>
+          <textarea id="callbackUrl" rows="2" readonly></textarea>
+          <button data-copy="callbackUrl">Copiar Callback URL</button>
+          <p class="hint">Depois da primeira autorização, a tela da Twitch mostra um <code>TWITCH_REFRESH_TOKEN</code>. Salve esse valor como variável secreta no Render para sobreviver a redeploys.</p>
+        </article>
+
+        <article class="card">
+          <h2>2. StreamElements — resposta da IA</h2>
+          <p>Não existe comando para o público. Crie um Timer no StreamElements e cole esta linha em <b>Response messages</b>:</p>
+          <textarea id="timerLine" rows="5" readonly></textarea>
+          <button data-copy="timerLine">Copiar Timer</button>
+          <div class="callout">
+            <strong>Configuração do Timer</strong>
+            <div>Online interval: <b>1 minuto</b></div>
+            <div>Chat lines: <b>1</b></div>
+          </div>
+          <p>Saída esperada: <b id="expectedBot">icarolzinhabot</b>. Isso acontece se essa conta já estiver ativa em <b>Custom Bot Name</b> no StreamElements do canal. Caso contrário, a resposta sai como StreamElements.</p>
+          <p class="hint">O Timer do StreamElements trabalha em minutos; por isso esta solução sem comando e sem credencial do StreamElements responde no máximo na frequência do Timer.</p>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Teste de personalidade</h2>
+          <p>Mostra o prompt que será entregue ao <code>$(ai)</code>, sem gastar chamada real.</p>
+          <div class="two"><input id="testUser" value="ViewerTeste" placeholder="Usuário"><input id="testText" value="Carol, você tá muito linda hoje 😏" placeholder="Mensagem"></div>
+          <button id="simulateBtn">Simular prompt</button>
+          <button id="injectBtn">Colocar teste na fila</button>
+          <pre id="promptPreview">Nenhum teste ainda.</pre>
+          <button id="clearQueue">Limpar fila</button>
+        </article>
+
+        <article class="card">
+          <h2>Status</h2>
+          <div class="stats">
+            <div><span>Mensagens vistas</span><b id="messagesSeen">0</b></div>
+            <div><span>Válidas</span><b id="messagesAccepted">0</b></div>
+            <div><span>Na fila</span><b id="queueLength">0</b></div>
+            <div><span>Prompts enviados</span><b id="promptsServed">0</b></div>
+          </div>
+          <label>Último erro Twitch</label>
+          <pre id="lastError" class="smallpre">Nenhum.</pre>
+          <a id="exportConfig" class="button-link" href="#">Exportar configuração JSON</a>
+        </article>
+      </section>
+
+      <section class="card actions">
+        <button id="saveBtn" class="primary">Salvar configurações</button>
+        <span id="saveMsg" class="msg"></span>
+      </section>
+    </div>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

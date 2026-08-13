@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: carolia-icarolinaporto
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: CHANNEL_NAME
+        value: icarolinaporto
+      - key: BOT_DISPLAY_NAME
+        value: icarolzinhabot
+      - key: PANEL_KEY
+        sync: false
+      - key: TIMER_KEY
+        generateValue: true
