@@ -474,6 +474,10 @@ function acceptChatMessage(data = {}) {
     score: scoreMessage(username, text, Array.isArray(data.badges) ? data.badges : [])
   };
 
+  // Mantém no máximo 1 mensagem pendente por usuário. Isso impede que uma
+  // única pessoa encha a fila e seja escolhida repetidamente enquanto outras
+  // pessoas também estão esperando. A mensagem mais nova substitui a anterior.
+  runtime.queue = runtime.queue.filter(x => x.username !== item.username);
   runtime.queue.push(item);
   runtime.messagesAccepted++;
   runtime.lastCandidateAt = new Date(item.receivedAt).toISOString();
@@ -491,10 +495,62 @@ function purgeQueue() {
 function chooseCandidate() {
   purgeQueue();
   if (!runtime.queue.length) return null;
-  const sorted = [...runtime.queue].sort((a, b) => (b.score - a.score) || (b.receivedAt - a.receivedAt));
+
+  const now = Date.now();
+  const fairnessWindowMs = 5 * 60 * 1000;
+
+  // Se houver qualquer pessoa ainda não respondida recentemente, quem acabou de
+  // receber resposta fica temporariamente fora da disputa. Assim pergunta, menção
+  // ou flerte continuam tendo prioridade SEM deixar uma única pessoa dominar.
+  const notRecentlyAnswered = runtime.queue.filter(item => {
+    const answeredAt = runtime.recentAnsweredUsers.get(item.username) || 0;
+    return !answeredAt || (now - answeredAt >= fairnessWindowMs);
+  });
+
+  let pool;
+  if (notRecentlyAnswered.length) {
+    pool = notRecentlyAnswered;
+  } else {
+    // Se todo mundo já recebeu resposta nos últimos 5 minutos, faz rodízio real:
+    // só entram na disputa as pessoas respondidas há mais tempo. Isso evita voltar
+    // imediatamente para o mesmo usuário só porque a mensagem dele tem score alto.
+    const oldestAnsweredAt = Math.min(...runtime.queue.map(item =>
+      runtime.recentAnsweredUsers.get(item.username) || 0
+    ));
+    pool = runtime.queue.filter(item =>
+      (runtime.recentAnsweredUsers.get(item.username) || 0) === oldestAnsweredAt
+    );
+  }
+
+  // Dentro do grupo justo, respeita pergunta/menção/flerte e depois a ordem da fila.
+  const sorted = pool.sort((a, b) => {
+    const scoreDiff = b.score - a.score;
+    if (scoreDiff) return scoreDiff;
+
+    const aAnswered = runtime.recentAnsweredUsers.get(a.username) || 0;
+    const bAnswered = runtime.recentAnsweredUsers.get(b.username) || 0;
+    if (aAnswered !== bAnswered) return aAnswered - bAnswered;
+
+    return a.receivedAt - b.receivedAt;
+  });
+
   const topScore = sorted[0].score;
   const top = sorted.filter(x => x.score >= topScore - 1).slice(0, 5);
-  const picked = top[Math.floor(Math.random() * top.length)];
+
+  // Entre candidatos equivalentes, escolhe primeiro quem está há mais tempo sem
+  // resposta. Se vários nunca foram respondidos, mantém uma leve aleatoriedade.
+  let picked;
+  const neverAnswered = top.filter(x => !runtime.recentAnsweredUsers.get(x.username));
+  if (neverAnswered.length) {
+    const oldestAt = Math.min(...neverAnswered.map(x => x.receivedAt));
+    const oldestGroup = neverAnswered.filter(x => x.receivedAt <= oldestAt + 5000);
+    picked = oldestGroup[Math.floor(Math.random() * oldestGroup.length)];
+  } else {
+    const leastRecent = Math.min(...top.map(x => runtime.recentAnsweredUsers.get(x.username) || 0));
+    const fairGroup = top.filter(x => (runtime.recentAnsweredUsers.get(x.username) || 0) === leastRecent);
+    picked = fairGroup[Math.floor(Math.random() * fairGroup.length)];
+  }
+
   runtime.queue = runtime.queue.filter(x => x.id !== picked.id);
   return picked;
 }

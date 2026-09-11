@@ -1,3 +1,8 @@
+
+## Correção de distribuição de respostas (4.1.1)
+
+A fila agora mantém apenas uma mensagem pendente por usuário e faz rodízio entre pessoas quando há várias esperando. Perguntas, menções e mensagens prioritárias continuam valendo, mas não permitem que um único usuário monopolize as respostas da IA.
+
 # CarolIA — icarolinaporto — sem OBS
 
 Sistema para acompanhar automaticamente o chat da Twitch `icarolinaporto`, selecionar mensagens e responder usando a IA nativa `$(ai)` do StreamElements.

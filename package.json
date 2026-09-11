@@ -1,6 +1,6 @@
 {
   "name": "carolia-icarolinaporto-sem-obs",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "private": true,
   "description": "CarolIA: Twitch EventSub no Render + painel de personalidade + IA nativa do StreamElements, sem OBS.",
   "main": "server.js",
