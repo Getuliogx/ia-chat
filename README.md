@@ -67,13 +67,37 @@ O `$(ai)` tem limite por canal de 10 requisições/minuto em canal regular, 20 e
 
 ## Personalidades
 
-O painel inclui:
+O painel inclui 31 personalidades prontas:
 
 - 😇 Suave
 - 🙂 Normal
+- 🥰 Fofa
+- 🤗 Carinhosa
+- ☺️ Tímida
+- 🌙 Calma
+- 🥳 Animada
+- 🤣 Engraçada
 - 😂 Zueira
+- 😈 Sarcástica
+- 🙃 Debochada
+- 😼 Irônica
+- 😤 Bravinha
+- 😒 Ranzinza
+- 🎭 Dramática
+- 🔥 Motivadora
+- 🫶 Conselheira
+- 🎮 Gamer
+- 🤓 Nerd
+- 🌸 Otaku
+- 🔮 Misteriosa
+- 💎 Elegante
+- 💕 Romântica
 - 💋 Sensual
 - 😏 Safadinha
+- 🔥 Provocadora
+- 👑 Mandona
+- 🧌 Troll
+- 🗣️ Fofoqueira
 - 🤪 Insana
 - 💀 Caos Pesado
 
