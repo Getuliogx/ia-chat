@@ -183,7 +183,66 @@ const PRESETS = {
     sensuality: 55, naughtiness: 68, profanity: 2, adultFlirt: true,
     customPersonality: 'Caos cômico pesado, respostas absurdas e imprevisíveis, mas sem assédio ou conteúdo sexual explícito.'
   }
+
 };
+
+// Traços adicionais usados pelos controles da seção "Personalidade".
+// Cada preset parte destes valores e sobrescreve os traços que o definem,
+// assim trocar de preset nunca deixa valores antigos "vazarem" de outro preset.
+const EXTRA_TRAIT_DEFAULTS = {
+  affection: 35, shyness: 15, romanticism: 20, humor: 45, teasing: 25,
+  irony: 25, drama: 20, jealousy: 5, curiosity: 45, patience: 50,
+  confidence: 55, boldness: 35, dominance: 20, mystery: 15, elegance: 25,
+  competitiveness: 20, gossip: 10, trolling: 10, sweetness: 35, seriousness: 30
+};
+
+const PRESET_EXTRA_TRAITS = {
+  suave:       { affection:90, sweetness:92, patience:88, confidence:45, seriousness:30, humor:30, curiosity:45 },
+  normal:      { affection:58, humor:62, curiosity:62, patience:58, confidence:65, boldness:38, teasing:35 },
+  fofa:        { affection:96, sweetness:100, shyness:36, humor:58, romanticism:30, patience:72, confidence:52 },
+  carinhosa:   { affection:100, sweetness:92, patience:94, romanticism:42, curiosity:72, seriousness:34 },
+  timida:      { shyness:98, sweetness:82, affection:78, patience:76, confidence:25, boldness:8, mystery:40 },
+  calma:       { patience:100, seriousness:58, affection:70, sweetness:62, confidence:58, drama:4, trolling:2 },
+  animada:     { humor:86, confidence:90, boldness:72, drama:48, curiosity:72, competitiveness:50, trolling:25 },
+  engracada:   { humor:100, teasing:72, irony:54, trolling:42, confidence:78, drama:46, seriousness:8 },
+  zueira:      { humor:96, teasing:90, irony:72, trolling:76, boldness:72, confidence:78, seriousness:6 },
+  sarcastica:  { irony:96, teasing:74, humor:58, confidence:82, seriousness:38, boldness:55, sweetness:12 },
+  debochada:   { teasing:100, irony:86, humor:82, trolling:64, boldness:80, confidence:84, sweetness:10 },
+  ironica:     { irony:100, teasing:72, seriousness:58, confidence:82, humor:52, mystery:28, sweetness:8 },
+  bravinha:    { drama:74, dominance:68, boldness:76, confidence:72, jealousy:28, teasing:58, patience:18 },
+  ranzinza:    { seriousness:76, irony:72, teasing:54, patience:18, sweetness:8, confidence:62, drama:40 },
+  dramatica:   { drama:100, boldness:74, humor:72, romanticism:44, jealousy:32, confidence:70, seriousness:16 },
+  motivadora:  { confidence:100, affection:84, patience:82, sweetness:72, seriousness:46, boldness:66, curiosity:64 },
+  conselheira: { patience:100, affection:92, seriousness:80, curiosity:82, confidence:72, sweetness:62, boldness:22 },
+  gamer:       { competitiveness:100, humor:78, teasing:58, confidence:78, boldness:60, trolling:40, curiosity:60 },
+  nerd:        { curiosity:100, seriousness:68, patience:72, confidence:70, humor:50, mystery:20, competitiveness:34 },
+  otaku:       { curiosity:82, humor:72, sweetness:64, drama:56, romanticism:42, confidence:66, competitiveness:38 },
+  misteriosa:  { mystery:100, curiosity:84, elegance:72, seriousness:56, confidence:68, shyness:28, humor:20 },
+  elegante:    { elegance:100, confidence:86, seriousness:70, patience:76, sweetness:54, mystery:44, boldness:38 },
+  romantica:   { romanticism:100, affection:94, sweetness:88, confidence:64, shyness:20, jealousy:18, elegance:58 },
+  sensual:     { confidence:90, boldness:82, elegance:70, romanticism:58, mystery:45, teasing:62, dominance:42 },
+  safadinha:   { boldness:92, teasing:82, confidence:88, humor:78, irony:58, dominance:45, trolling:40 },
+  provocadora: { boldness:100, teasing:92, confidence:94, dominance:70, irony:68, competitiveness:58, mystery:30 },
+  mandona:     { dominance:100, confidence:96, boldness:78, seriousness:54, teasing:60, patience:28, competitiveness:64 },
+  troll:       { trolling:100, teasing:96, irony:88, humor:94, boldness:82, gossip:32, seriousness:4 },
+  fofoqueira:  { gossip:100, curiosity:100, humor:78, drama:68, teasing:62, affection:52, seriousness:12 },
+  insana:      { drama:92, trolling:88, humor:90, boldness:94, teasing:82, irony:76, dominance:54, seriousness:2 },
+  caos:        { drama:100, trolling:100, humor:94, boldness:100, teasing:96, irony:88, dominance:72, seriousness:0 }
+};
+
+for (const [presetName, preset] of Object.entries(PRESETS)) {
+  Object.assign(preset, EXTRA_TRAIT_DEFAULTS, PRESET_EXTRA_TRAITS[presetName] || {});
+}
+
+const TRAIT_PROMPT_LABELS = {
+  joy:'alegre', sarcasm:'sarcástica', irritation:'irritada', energy:'energética', chaos:'caótica', empathy:'empática',
+  memes:'memes', sensuality:'sensual', naughtiness:'atrevida', affection:'carinhosa', shyness:'tímida',
+  romanticism:'romântica', humor:'engraçada', teasing:'debochada', irony:'irônica', drama:'dramática', jealousy:'ciumenta',
+  curiosity:'curiosa', patience:'paciente', confidence:'confiante', boldness:'ousada', dominance:'mandona', mystery:'misteriosa',
+  elegance:'elegante', competitiveness:'competitiva', gossip:'fofoqueira', trolling:'troll', sweetness:'doce', seriousness:'séria'
+};
+
+const ALL_TRAIT_KEYS = Object.keys(TRAIT_PROMPT_LABELS);
 
 function readJson(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
@@ -290,6 +349,26 @@ function sanitizeConfig(input = {}) {
     memes: clampInt(input.memes, 0, 100, base.memes),
     sensuality: clampInt(input.sensuality, 0, 100, base.sensuality),
     naughtiness: clampInt(input.naughtiness, 0, 100, base.naughtiness),
+    affection: clampInt(input.affection, 0, 100, base.affection),
+    shyness: clampInt(input.shyness, 0, 100, base.shyness),
+    romanticism: clampInt(input.romanticism, 0, 100, base.romanticism),
+    humor: clampInt(input.humor, 0, 100, base.humor),
+    teasing: clampInt(input.teasing, 0, 100, base.teasing),
+    irony: clampInt(input.irony, 0, 100, base.irony),
+    drama: clampInt(input.drama, 0, 100, base.drama),
+    jealousy: clampInt(input.jealousy, 0, 100, base.jealousy),
+    curiosity: clampInt(input.curiosity, 0, 100, base.curiosity),
+    patience: clampInt(input.patience, 0, 100, base.patience),
+    confidence: clampInt(input.confidence, 0, 100, base.confidence),
+    boldness: clampInt(input.boldness, 0, 100, base.boldness),
+    dominance: clampInt(input.dominance, 0, 100, base.dominance),
+    mystery: clampInt(input.mystery, 0, 100, base.mystery),
+    elegance: clampInt(input.elegance, 0, 100, base.elegance),
+    competitiveness: clampInt(input.competitiveness, 0, 100, base.competitiveness),
+    gossip: clampInt(input.gossip, 0, 100, base.gossip),
+    trolling: clampInt(input.trolling, 0, 100, base.trolling),
+    sweetness: clampInt(input.sweetness, 0, 100, base.sweetness),
+    seriousness: clampInt(input.seriousness, 0, 100, base.seriousness),
     profanity: clampInt(input.profanity, 0, 3, base.profanity),
     responseLength,
     mentionUser: bool(input.mentionUser, base.mentionUser),
@@ -441,13 +520,26 @@ function buildPrompt(item) {
   const who = config.mentionUser ? `@${item.displayName}` : item.displayName;
   const lengthText = config.responseLength === 'medium' ? 'até 2 frases' : '1 frase curta';
   const profanity = ['sem palavrão', 'palavrão leve', 'palavrão moderado', 'palavrão forte sem atacar'][Number(config.profanity || 0)];
-  const flirt = config.adultFlirt
-    ? `sensual ${config.sensuality}/100, atrevida ${config.naughtiness}/100; flerte adulto e duplo sentido leve quando couber`
-    : 'sem flerte sexual';
 
+  // Todos os 29 controles participam: os mais intensos entram primeiro no prompt.
+  // Isso mantém o limite do $(customapi) sem ignorar sliders como acontecia antes.
+  const rankedTraits = ALL_TRAIT_KEYS
+    .map(key => ({ key, value: Number(config[key] || 0), label: TRAIT_PROMPT_LABELS[key] }))
+    .sort((a, b) => b.value - a.value);
+  const dominant = rankedTraits.slice(0, 8).map(t => `${t.label} ${t.value}`).join(', ');
+
+  const flirt = config.adultFlirt ? 'flerte adulto leve/duplo sentido' : 'sem flerte sexual';
+  const custom = String(config.customPersonality || '').trim();
   const head = `PT-BR. Você é ${config.aiName}, IA do chat de ${CHANNEL_NAME}. Responda ${who}: "`;
-  const tailRaw = `". ${lengthText}; alegre ${config.joy}, sarcástica ${config.sarcasm}, energia ${config.energy}, caos ${config.chaos}, memes ${config.memes}; ${flirt}; ${profanity}. ${config.customPersonality} Nunca sexo explícito, assédio, menores, ódio ou ameaça.`;
-  const tail = truncateUtf8(tailRaw, 238);
+  const fixedEnd = `; ${flirt}; ${profanity}. Sem explícito, assédio, menores, ódio ou ameaça.`;
+  const profile = `". ${lengthText}. Traços 0-100: ${dominant}.`;
+
+  // Dá prioridade aos traços e depois usa o espaço restante para a personalidade personalizada.
+  const fixedTail = profile + fixedEnd;
+  const fixedTailBytes = utf8Bytes(fixedTail);
+  const customBudget = Math.max(0, Math.min(120, 238 - fixedTailBytes - 1));
+  const customPart = customBudget > 0 && custom ? ` ${truncateUtf8(custom, customBudget)}` : '';
+  const tail = truncateUtf8(profile + customPart + fixedEnd, 238);
   const room = Math.max(32, 388 - utf8Bytes(head) - utf8Bytes(tail));
   const msg = truncateUtf8(item.text.replace(/"/g, "'"), room);
   return truncateUtf8(head + msg + tail, 388);

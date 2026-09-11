@@ -243,3 +243,7 @@ npm start
 Abra `http://localhost:8080`.
 
 Para OAuth local, a Callback URL cadastrada na Twitch precisa ser exatamente a mesma mostrada no painel.
+
+
+## Personalidade ampliada
+O painel possui 29 controles de traços de personalidade. Todos participam da montagem do prompt; devido ao limite de ~400 bytes do `$(customapi)`, os 8 traços mais intensos são priorizados em cada resposta. Os presets ajustam também os novos traços.

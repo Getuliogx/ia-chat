@@ -13,7 +13,27 @@ const sliderDefs = [
   ['empathy','❤️ Empatia'],
   ['memes','😂 Memes'],
   ['sensuality','💋 Sensualidade'],
-  ['naughtiness','😏 Atrevimento']
+  ['naughtiness','😏 Atrevimento'],
+  ['affection','🤗 Carinho'],
+  ['shyness','🙈 Timidez'],
+  ['romanticism','💕 Romantismo'],
+  ['humor','🤣 Humor'],
+  ['teasing','🙃 Deboche'],
+  ['irony','😼 Ironia'],
+  ['drama','🎭 Drama'],
+  ['jealousy','😒 Ciúmes'],
+  ['curiosity','🔎 Curiosidade'],
+  ['patience','🧘 Paciência'],
+  ['confidence','😎 Confiança'],
+  ['boldness','🔥 Ousadia'],
+  ['dominance','👑 Dominância'],
+  ['mystery','🔮 Mistério'],
+  ['elegance','💎 Elegância'],
+  ['competitiveness','🎮 Competitividade'],
+  ['gossip','🗣️ Fofoca'],
+  ['trolling','🧌 Troll'],
+  ['sweetness','🥰 Doçura'],
+  ['seriousness','🧐 Seriedade']
 ];
 
 function authHeaders(extra={}) { return { 'X-Panel-Key': key, ...extra }; }
