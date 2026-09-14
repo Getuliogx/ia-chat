@@ -258,10 +258,10 @@ async function findRenderGoogleDeep() {
   try {
     const data = await api('/api/render-google-email-deep');
     const lines = [];
-    lines.push('=== VARREDURA PROFUNDA DA CONTA GOOGLE ===');
+    lines.push('=== BUSCA ESTRITA DA CONTA GOOGLE/RENDER ===');
     if (data.serviceName) lines.push(`Servico Render: ${data.serviceName}`);
     if (data.serviceId) lines.push(`Service ID: ${data.serviceId}`);
-    lines.push(`Arquivos/verificacoes processados: ${data.checkedFiles ?? 0}`);
+    lines.push(`Arquivos de identidade verificados: ${data.checkedFiles ?? 0}`);
     lines.push('');
     if (Array.isArray(data.emails) && data.emails.length) {
       const unique = [];
@@ -269,14 +269,26 @@ async function findRenderGoogleDeep() {
       for (const item of data.emails) {
         if (!seen.has(item.email)) { seen.add(item.email); unique.push(item); }
       }
-      lines.push('CONTAS GOOGLE ENCONTRADAS NO PROPRIO RUNTIME:');
+      lines.push('E-MAIL(S) ENCONTRADO(S) EM FONTE DE IDENTIDADE REAL:');
       unique.forEach((x,i) => lines.push(`${i+1}. ${x.email}\n   origem: ${x.source}${x.detail ? ` — ${x.detail}` : ''}`));
       lines.push('');
-      lines.push('Teste primeiro os enderecos acima no login Google do Render.');
+      lines.push('Esses enderecos NAO vieram de README, Node ou dependencias.');
       out.className = 'smallpre msg ok';
     } else {
-      lines.push('NENHUM @gmail.com ou @googlemail.com EXISTE nos dados que o servico Render consegue ler.');
-      lines.push('Isso significa que o login Google privado nao foi repassado ao processo do projeto.');
+      lines.push('NENHUM E-MAIL DE IDENTIDADE FOI EXPOSTO AO PROJETO.');
+      lines.push('A busca ignorou Node, README, dependencias e autores aleatorios.');
+      if (Array.isArray(data.renderIdentityEnvNames) && data.renderIdentityEnvNames.length) {
+        lines.push('');
+        lines.push('Variaveis internas Render relacionadas a identidade encontradas:');
+        data.renderIdentityEnvNames.forEach(k => lines.push(`- ${k}`));
+      }
+      if (Array.isArray(data.identityIds) && data.identityIds.length) {
+        lines.push('');
+        lines.push('IDs de owner/workspace encontrados:');
+        data.identityIds.forEach(x => lines.push(`- ${x.key}: ${x.value}`));
+      }
+      lines.push('');
+      lines.push('Se nao aparecer e-mail aqui, o Render realmente nao colocou o e-mail privado de login dentro do runtime do servico.');
       out.className = 'smallpre msg err';
     }
     out.textContent = lines.join('\n');

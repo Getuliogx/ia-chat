@@ -1802,111 +1802,104 @@ function findFirstField(value, names, depth = 0) {
 
 
 
-// V13: varredura profunda, somente para descobrir enderecos Google que ja existam
-// no runtime do proprio Render. Nao retorna senhas, tokens nem valores completos.
-function extractGoogleEmails(value) {
+// V14: busca estrita por identidade da conta Render/Google.
+// NUNCA varre Node, dependencias, READMEs ou documentacao aleatoria.
+function extractAnyEmails(value) {
   const text = String(value || '');
-  const found = text.match(/[A-Z0-9._%+\-]+@(?:gmail\.com|googlemail\.com)/gi) || [];
+  const found = text.match(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/gi) || [];
   return [...new Set(found.map(x => x.toLowerCase()))];
 }
 
-function isProbablyTextFile(name) {
-  const lower = String(name || '').toLowerCase();
-  const allowed = [
-    '.env','.txt','.json','.yaml','.yml','.md','.log','.conf','.config','.ini','.toml',
-    '.js','.cjs','.mjs','.ts','.tsx','.jsx','.html','.css','.xml','.properties','.npmrc','.gitconfig'
-  ];
-  return allowed.some(ext => lower === ext || lower.endsWith(ext));
+function identityKeyScore(key) {
+  const k = String(key || '').toUpperCase();
+  let score = 0;
+  if (/EMAIL|E_MAIL|MAIL/.test(k)) score += 6;
+  if (/GOOGLE|GMAIL|GOOGLEMAIL/.test(k)) score += 6;
+  if (/OWNER|ACCOUNT|IDENTITY|LOGIN|AUTH|USER|WORKSPACE|TEAM|ORG/.test(k)) score += 3;
+  if (/RENDER/.test(k)) score += 2;
+  return score;
+}
+
+function safeIdentityId(value) {
+  const v = String(value || '').trim();
+  if (/^(usr|tea|team|ws|workspace|org|owner|owr|acc)-[a-z0-9_-]+$/i.test(v)) return v;
+  return '';
 }
 
 async function deepFindGoogleEmails() {
   const hits = [];
+  const ids = [];
   const seen = new Set();
-  const add = (email, source, detail='') => {
+  const add = (email, source, detail='', confidence='alta') => {
     email = String(email || '').toLowerCase();
-    if (!email || seen.has(`${email}|${source}|${detail}`)) return;
-    seen.add(`${email}|${source}|${detail}`);
-    hits.push({ email, source, detail });
+    if (!email) return;
+    const id = `${email}|${source}|${detail}`;
+    if (seen.has(id)) return;
+    seen.add(id);
+    hits.push({ email, source, detail, confidence });
   };
 
-  // 1) Tudo que o Render disponibilizou ao processo, incluindo variaveis internas.
+  // 1) Somente variaveis de ambiente cujo NOME indica identidade/conta.
   for (const [key, value] of Object.entries(process.env)) {
-    for (const email of extractGoogleEmails(value)) add(email, 'Variavel do runtime', key);
+    const score = identityKeyScore(key);
+    if (score < 3) continue;
+    for (const email of extractAnyEmails(value)) {
+      add(email, 'Variavel de identidade do runtime', key, score >= 8 ? 'muito alta' : 'alta');
+    }
+    const iid = safeIdentityId(value);
+    if (iid && /RENDER|OWNER|ACCOUNT|USER|WORKSPACE|TEAM|ORG/i.test(key)) {
+      ids.push({ key, value: iid });
+    }
   }
 
-  // 2) Argumentos do processo e metadados do Node.
-  for (const email of extractGoogleEmails(process.argv.join(' '))) add(email, 'Processo Node', 'argv');
-  try {
-    for (const email of extractGoogleEmails(JSON.stringify(process.report?.getReport?.() || {}))) {
-      add(email, 'Relatorio do processo', 'process.report');
-    }
-  } catch {}
-
-  // 3) Arquivos pequenos de configuracao/metadados acessiveis no container.
-  const roots = [
-    ROOT,
-    '/opt/render/project',
-    '/etc',
-    '/root',
-    '/home'
+  // 2) Arquivos conhecidos de configuracao de identidade. Nao faz busca geral.
+  const files = [
+    '/root/.gitconfig',
+    '/root/.config/render/cli.yaml',
+    '/root/.render/cli.yaml',
+    '/home/render/.config/render/cli.yaml',
+    '/home/render/.render/cli.yaml',
+    '/opt/render/project/src/.env',
+    '/opt/render/project/src/.env.production',
+    '/opt/render/project/src/.env.local',
+    '/etc/environment'
   ];
-  const skipNames = new Set(['node_modules','.cache','.npm','tts','models','model','proc','sys','dev']);
   let checked = 0;
-  const maxFiles = 2500;
-  const maxDepth = 5;
-  const maxBytes = 1024 * 1024;
-
-  const walk = (dir, depth) => {
-    if (checked >= maxFiles || depth > maxDepth) return;
-    let entries = [];
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
-    for (const ent of entries) {
-      if (checked >= maxFiles) break;
-      const full = path.join(dir, ent.name);
-      if (ent.isDirectory()) {
-        if (!skipNames.has(ent.name) && !ent.name.startsWith('node_modules')) walk(full, depth + 1);
-        continue;
-      }
-      if (!ent.isFile()) continue;
-      checked++;
-      if (!isProbablyTextFile(ent.name) && !/^\.?env/i.test(ent.name) && !/profile|account|user|render|auth|credential|identity|config/i.test(ent.name)) continue;
-      try {
-        const st = fs.statSync(full);
-        if (st.size <= 0 || st.size > maxBytes) continue;
-        const buf = fs.readFileSync(full);
-        if (buf.includes(0)) continue;
-        const text = buf.toString('utf8');
-        for (const email of extractGoogleEmails(text)) add(email, 'Arquivo do runtime', full);
-      } catch {}
-    }
-  };
-  for (const root of roots) walk(root, 0);
-
-  // 4) Alguns arquivos comuns que podem existir fora da arvore acima.
-  const directFiles = [
-    '/root/.gitconfig','/root/.npmrc','/etc/environment','/etc/profile',
-    '/opt/render/project/src/.env','/opt/render/project/src/.env.production'
-  ];
-  for (const file of directFiles) {
+  for (const file of files) {
     try {
       if (!fs.existsSync(file)) continue;
       const st = fs.statSync(file);
-      if (!st.isFile() || st.size > maxBytes) continue;
-      const text = fs.readFileSync(file, 'utf8');
-      for (const email of extractGoogleEmails(text)) add(email, 'Arquivo do runtime', file);
+      if (!st.isFile() || st.size <= 0 || st.size > 512 * 1024) continue;
+      checked++;
+      const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // So considera linha que fala explicitamente de identidade.
+        if (!/(email|e-mail|google|gmail|owner|account|identity|login|auth|user|workspace|render)/i.test(line)) continue;
+        for (const email of extractAnyEmails(line)) {
+          add(email, 'Arquivo de identidade/configuracao', `${file}:${i+1}`, 'media');
+        }
+      }
     } catch {}
   }
 
+  // 3) Metadados Render: mostra apenas IDs relacionados a owner/workspace se existirem.
+  const renderEnvNames = Object.keys(process.env)
+    .filter(k => /^RENDER_/i.test(k) && /(OWNER|ACCOUNT|USER|WORKSPACE|TEAM|ORG|EMAIL|GOOGLE|LOGIN|AUTH)/i.test(k))
+    .sort();
+
   return {
     checkedFiles: checked,
-    emails: hits.slice(0, 100),
+    emails: hits,
     found: hits.length > 0,
+    identityIds: ids,
+    renderIdentityEnvNames: renderEnvNames,
     serviceId: String(process.env.RENDER_SERVICE_ID || ''),
     serviceName: String(process.env.RENDER_SERVICE_NAME || ''),
-    hostname: String(process.env.RENDER_EXTERNAL_HOSTNAME || '')
+    hostname: String(process.env.RENDER_EXTERNAL_HOSTNAME || ''),
+    strict: true
   };
 }
-
 
 app.get('/api/render-google-email-deep', panelAuth, async (_req, res) => {
   try {
