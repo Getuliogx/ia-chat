@@ -285,6 +285,11 @@ const runtime = {
   messagesAccepted: 0,
   promptsServed: 0,
   spokenReplies: 0,
+  ttsGenerated: 0,
+  ttsFailures: 0,
+  lastTtsError: null,
+  lastTtsAt: null,
+  lastSpokenMessageId: null,
   suppressed: 0,
   queue: [],
   pending: null,
@@ -698,11 +703,24 @@ async function synthesizeTts(text) {
     pitch: `${Number(config.ttsPitch || 0) >= 0 ? '+' : ''}${Number(config.ttsPitch || 0)}%`,
     rate: `${Number(config.ttsRate || 0) >= 0 ? '+' : ''}${Number(config.ttsRate || 0)}%`,
     volume: `${Number(config.ttsVolume || 0) >= 0 ? '+' : ''}${Number(config.ttsVolume || 0)}%`,
-    timeout: 15000
+    timeout: 30000
   });
-  await tts.ttsPromise(clean, file);
-  pruneTtsFiles();
-  return `/tts/${filename}`;
+  try {
+    await tts.ttsPromise(clean, file);
+    const st = fs.statSync(file);
+    if (!st.isFile() || st.size < 300) throw new Error(`TTS gerou MP3 inválido (${st.size || 0} bytes)`);
+    runtime.ttsGenerated++;
+    runtime.lastTtsError = null;
+    runtime.lastTtsAt = new Date().toISOString();
+    pruneTtsFiles();
+    return `/tts/${filename}`;
+  } catch (err) {
+    runtime.ttsFailures++;
+    runtime.lastTtsError = String(err?.message || err);
+    runtime.lastTtsAt = new Date().toISOString();
+    try { if (fs.existsSync(file)) fs.unlinkSync(file); } catch {}
+    throw err;
+  }
 }
 
 async function publishBotReply(text, meta = {}) {
@@ -1001,12 +1019,17 @@ async function connectEventSub(url = 'wss://eventsub.wss.twitch.tv/ws') {
       runtime.twitch.lastMessageAt = new Date().toISOString();
       const chatterLogin = String(ev.chatter_user_login || '').toLowerCase();
       const messageText = ev.message?.text || '';
-      if (isExpectedBot(chatterLogin) && Date.now() <= runtime.awaitingBotResponseUntil) {
-        runtime.awaitingBotResponseUntil = 0;
-        publishBotReply(messageText, {
-          source: chatterLogin === BOT_DISPLAY_NAME.toLowerCase() ? 'custom-bot' : 'streamelements',
-          botName: ev.chatter_user_name || chatterLogin
-        }).catch(err => console.error('[overlay reply]', err.message));
+      if (isExpectedBot(chatterLogin)) {
+        const messageId = String(ev.message_id || '');
+        if (!messageId || runtime.lastSpokenMessageId !== messageId) {
+          runtime.lastSpokenMessageId = messageId || `${chatterLogin}:${messageText}:${Date.now()}`;
+          runtime.awaitingBotResponseUntil = 0;
+          publishBotReply(messageText, {
+            source: chatterLogin === BOT_DISPLAY_NAME.toLowerCase() ? 'custom-bot' : 'streamelements',
+            botName: ev.chatter_user_name || chatterLogin,
+            twitchMessageId: messageId || null
+          }).catch(err => console.error('[overlay reply]', err.message));
+        }
         return;
       }
       acceptChatMessage({
@@ -1082,8 +1105,12 @@ app.get('/tts/:file', (req, res) => {
   if (!/^[a-f0-9-]{36}\.mp3$/i.test(name)) return res.status(404).end();
   const file = path.join(TTS_DIR, name);
   if (!fs.existsSync(file)) return res.status(404).end();
-  res.set('Cache-Control', 'private, max-age=900');
-  res.type('audio/mpeg').sendFile(file);
+  res.set({
+    'Cache-Control': 'no-store, max-age=0',
+    'Content-Type': 'audio/mpeg',
+    'Accept-Ranges': 'bytes'
+  });
+  res.sendFile(file);
 });
 
 app.get('/api/overlay-events', overlayAuth, (req, res) => {
@@ -1199,6 +1226,10 @@ app.get('/api/status', panelAuth, (req, res) => {
     pendingUser: runtime.pending?.item?.displayName || null,
     promptsServed: runtime.promptsServed,
     spokenReplies: runtime.spokenReplies,
+    ttsGenerated: runtime.ttsGenerated,
+    ttsFailures: runtime.ttsFailures,
+    lastTtsError: runtime.lastTtsError,
+    lastTtsAt: runtime.lastTtsAt,
     lastSpokenReply: runtime.lastSpokenReply,
     overlayClients: overlayClients.size,
     suppressed: runtime.suppressed,
@@ -1270,7 +1301,7 @@ app.post('/api/test-avatar', panelAuth, async (req, res) => {
   try {
     const text = cleanSpeechText(req.body?.text || 'Oi! Eu sou a CarolIA. Agora eu tenho corpo e voz para aparecer na live!');
     await publishBotReply(text, { source: 'panel-test', botName: config.aiName || 'CarolIA' });
-    res.json({ ok: true, text, overlayClients: overlayClients.size });
+    res.json({ ok: true, text, overlayClients: overlayClients.size, ttsGenerated: runtime.ttsGenerated, ttsFailures: runtime.ttsFailures, lastTtsError: runtime.lastTtsError, lastSpokenReply: runtime.lastSpokenReply });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

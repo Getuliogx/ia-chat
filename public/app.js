@@ -157,6 +157,9 @@ async function refreshStatus() {
     $('promptsServed').textContent = s.promptsServed;
     $('spokenReplies').textContent = s.spokenReplies || 0;
     $('overlayClients').textContent = s.overlayClients || 0;
+    if ($('ttsGenerated')) $('ttsGenerated').textContent = s.ttsGenerated || 0;
+    if ($('ttsFailures')) $('ttsFailures').textContent = s.ttsFailures || 0;
+    if ($('lastTtsError')) $('lastTtsError').textContent = s.lastTtsError || 'Nenhum.';
     $('lastError').textContent = s.twitch?.lastError || 'Nenhum.';
     $('callbackUrl').value = s.callbackUrl || $('callbackUrl').value;
     $('timerLine').value = s.timerLine || $('timerLine').value;
@@ -194,10 +197,17 @@ async function testAvatar() {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({text:$('avatarTestText').value})
     });
-    msg.textContent = data.overlayClients > 0
-      ? `Teste enviado para ${data.overlayClients} overlay(s) conectado(s).`
-      : 'Teste gerado, mas nenhum overlay está aberto/conectado.';
-    msg.className = data.overlayClients > 0 ? 'msg ok' : 'msg err';
+    const audioOk = Boolean(data.lastSpokenReply?.audioUrl) && !data.lastTtsError;
+    if (data.overlayClients <= 0) {
+      msg.textContent = 'Nenhum avatar está conectado. Abra a URL do avatar/Browser Source.';
+      msg.className = 'msg err';
+    } else if (!audioOk) {
+      msg.textContent = `Avatar conectado, mas o TTS falhou: ${data.lastTtsError || 'MP3 não foi gerado.'}`;
+      msg.className = 'msg err';
+    } else {
+      msg.textContent = `MP3 gerado e enviado para ${data.overlayClients} avatar(s).`;
+      msg.className = 'msg ok';
+    }
     refreshStatus();
   } catch (e) {
     msg.textContent = e.message;

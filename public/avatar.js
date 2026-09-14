@@ -9,11 +9,8 @@ const voice = $('voice');
 const queue = [];
 let busy = false;
 let cfg = { aiName:'CarolIA', avatarEnabled:true, avatarImageUrl:'', ttsEnabled:true };
-let audioCtx = null;
-let analyser = null;
-let sourceNode = null;
-let rafId = 0;
-let fallbackTimer = 0;
+let motionTimer = 0;
+let currentBlobUrl = '';
 
 function applyAvatar() {
   const custom = $('customAvatar');
@@ -41,116 +38,124 @@ async function loadConfig() {
   applyAvatar();
 }
 
-function setSpeaking(active) {
-  stage.classList.toggle('speaking', active);
-  if (!active) setTalkLevel(0);
-}
-
 function setTalkLevel(value) {
   const v = Math.max(0, Math.min(1, Number(value) || 0));
   stage.style.setProperty('--talk', v.toFixed(3));
 }
 
-function stopVisualizers() {
-  if (rafId) cancelAnimationFrame(rafId);
-  rafId = 0;
-  if (fallbackTimer) clearInterval(fallbackTimer);
-  fallbackTimer = 0;
+function stopMotion() {
+  if (motionTimer) clearInterval(motionTimer);
+  motionTimer = 0;
   setTalkLevel(0);
 }
 
-function ensureAnalyser() {
-  if (analyser) return true;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return false;
-  try {
-    audioCtx = new AC();
-    sourceNode = audioCtx.createMediaElementSource(voice);
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    analyser.smoothingTimeConstant = 0.72;
-    sourceNode.connect(analyser);
-    analyser.connect(audioCtx.destination);
-    return true;
-  } catch (err) {
-    console.warn('[CarolIA avatar] analisador não disponível:', err.message);
-    analyser = null;
-    return false;
-  }
+function setSpeaking(active) {
+  stage.classList.toggle('speaking', active);
+  if (!active) stopMotion();
 }
 
-function startAudioReactiveMotion() {
-  stopVisualizers();
-  if (!ensureAnalyser()) return;
-  const bins = new Uint8Array(analyser.frequencyBinCount);
-  const tick = () => {
-    if (!busy) {
-      setTalkLevel(0);
+// A animação NÃO passa o áudio por WebAudio/AudioContext.
+// Isso deixa o <audio> sair nativamente no Browser Source do OBS.
+function startSpeakingMotion() {
+  stopMotion();
+  motionTimer = setInterval(() => {
+    if (!busy || voice.paused || voice.ended) {
+      setTalkLevel(0.05);
       return;
     }
-    try {
-      analyser.getByteFrequencyData(bins);
-      let sum = 0;
-      for (let i = 0; i < bins.length; i += 1) sum += bins[i];
-      const avg = sum / (bins.length || 1);
-      const talk = Math.max(0.04, Math.min(1, avg / 72));
-      setTalkLevel(talk);
-    } catch {
-      setTalkLevel(0.2);
-    }
-    rafId = requestAnimationFrame(tick);
-  };
-  rafId = requestAnimationFrame(tick);
-}
-
-function startFallbackMotion(durationMs) {
-  stopVisualizers();
-  const stopAt = Date.now() + Math.max(900, durationMs || 2000);
-  fallbackTimer = setInterval(() => {
-    if (!busy || Date.now() >= stopAt) {
-      clearInterval(fallbackTimer);
-      fallbackTimer = 0;
-      setTalkLevel(0);
-      return;
-    }
-    setTalkLevel(0.18 + Math.random() * 0.48);
-  }, 85);
+    const t = Number(voice.currentTime || 0);
+    const wave = Math.abs(Math.sin(t * 12.5) * 0.46 + Math.sin(t * 21.7) * 0.24);
+    setTalkLevel(Math.max(0.12, Math.min(0.9, 0.18 + wave)));
+  }, 55);
 }
 
 function waitForText(text) {
   const ms = Math.min(6500, Math.max(1300, String(text || '').length * 42));
-  startFallbackMotion(ms);
+  setSpeaking(true);
+  const started = Date.now();
+  stopMotion();
+  motionTimer = setInterval(() => {
+    if (Date.now() - started >= ms) return;
+    setTalkLevel(0.18 + Math.random() * 0.45);
+  }, 80);
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function revokeBlob() {
+  if (currentBlobUrl) {
+    try { URL.revokeObjectURL(currentBlobUrl); } catch {}
+    currentBlobUrl = '';
+  }
+}
+
+async function fetchAudioBlob(url) {
+  const r = await fetch(`${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`, {
+    cache:'no-store',
+    credentials:'same-origin'
+  });
+  if (!r.ok) throw new Error(`MP3 HTTP ${r.status}`);
+  const blob = await r.blob();
+  if (!blob.size || blob.size < 300) throw new Error('MP3 vazio/inválido');
+  return blob;
 }
 
 async function playServerAudio(item) {
   if (!item.audioUrl || item.ttsEnabled === false) return false;
   try {
-    ensureAnalyser();
-    if (audioCtx?.state === 'suspended') {
-      try { await audioCtx.resume(); } catch {}
-    }
+    const blob = await fetchAudioBlob(item.audioUrl);
+    revokeBlob();
+    currentBlobUrl = URL.createObjectURL(blob);
+
+    voice.pause();
+    voice.currentTime = 0;
+    voice.muted = false;
+    voice.defaultMuted = false;
+    voice.volume = 1;
+    voice.src = currentBlobUrl;
+    voice.load();
+
     await new Promise((resolve, reject) => {
-      const done = () => { cleanup(); stopVisualizers(); resolve(); };
-      const fail = () => { cleanup(); stopVisualizers(); reject(new Error('Falha ao reproduzir o TTS feminino')); };
-      const cleanup = () => {
-        voice.removeEventListener('ended', done);
-        voice.removeEventListener('error', fail);
-        voice.removeEventListener('playing', onPlaying);
+      let settled = false;
+      const finish = (ok, err) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        ok ? resolve() : reject(err || new Error('Falha ao tocar MP3'));
       };
-      const onPlaying = () => startAudioReactiveMotion();
-      voice.addEventListener('ended', done, {once:true});
-      voice.addEventListener('error', fail, {once:true});
+      const cleanup = () => {
+        voice.removeEventListener('ended', onEnded);
+        voice.removeEventListener('error', onError);
+        voice.removeEventListener('playing', onPlaying);
+        voice.removeEventListener('canplay', onCanPlay);
+      };
+      const onEnded = () => finish(true);
+      const onError = () => finish(false, new Error(`Erro de áudio ${voice.error?.code || ''}`.trim()));
+      const onPlaying = () => startSpeakingMotion();
+      const onCanPlay = async () => {
+        try {
+          const promise = voice.play();
+          if (promise && typeof promise.then === 'function') await promise;
+        } catch (err) {
+          finish(false, err);
+        }
+      };
+      voice.addEventListener('ended', onEnded, {once:true});
+      voice.addEventListener('error', onError, {once:true});
       voice.addEventListener('playing', onPlaying, {once:true});
-      voice.src = `${item.audioUrl}${item.audioUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
-      voice.volume = 1;
-      const result = voice.play();
-      if (result && typeof result.catch === 'function') result.catch(fail);
+      voice.addEventListener('canplay', onCanPlay, {once:true});
+
+      // Alguns CEF/OBS já ficam prontos imediatamente e não disparam canplay de novo.
+      if (voice.readyState >= 3) onCanPlay();
+      setTimeout(() => {
+        if (!settled && voice.paused) onCanPlay();
+      }, 350);
     });
     return true;
   } catch (err) {
-    console.error('[CarolIA avatar] áudio feminino não reproduzido:', err.message);
+    console.error('[CarolIA avatar] falha ao tocar TTS:', err?.message || err);
     return false;
+  } finally {
+    stopMotion();
   }
 }
 
@@ -166,21 +171,23 @@ async function playItem(item) {
   setSpeaking(true);
 
   const played = await playServerAudio(item);
-  if (!played) await waitForText(item.text);
+  // Se o servidor não conseguiu gerar MP3, mantém só a animação; não usa voz masculina do navegador.
+  if (!played && !item.audioUrl) await waitForText(item.text);
 
-  stopVisualizers();
   setSpeaking(false);
   busy = false;
+  revokeBlob();
   runQueue();
 }
 
 function runQueue() {
   if (busy || !queue.length) return;
   const next = queue.shift();
-  playItem(next).catch(() => {
-    stopVisualizers();
+  playItem(next).catch(err => {
+    console.error('[CarolIA avatar] fila:', err?.message || err);
     busy = false;
     setSpeaking(false);
+    revokeBlob();
     runQueue();
   });
 }
@@ -205,8 +212,9 @@ async function start() {
 }
 
 window.addEventListener('beforeunload', () => {
-  stopVisualizers();
+  stopMotion();
   try { voice.pause(); } catch {}
+  revokeBlob();
 });
 
 start();
