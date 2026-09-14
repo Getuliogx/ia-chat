@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const WebSocket = require('ws');
+const { EdgeTTS } = require('node-edge-tts');
 
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, 'data');
@@ -18,14 +19,17 @@ const CHANNEL_NAME = String(process.env.CHANNEL_NAME || 'icarolinaporto').trim()
 const BOT_DISPLAY_NAME = String(process.env.BOT_DISPLAY_NAME || 'icarolzinhabot').trim();
 const PANEL_KEY = String(process.env.PANEL_KEY || '').trim();
 const TIMER_KEY = String(process.env.TIMER_KEY || '').trim();
+const OVERLAY_KEY = String(process.env.OVERLAY_KEY || TIMER_KEY || '').trim();
 const TWITCH_CLIENT_ID = String(process.env.TWITCH_CLIENT_ID || '').trim();
 const TWITCH_CLIENT_SECRET = String(process.env.TWITCH_CLIENT_SECRET || '').trim();
 const ENV_REFRESH_TOKEN = String(process.env.TWITCH_REFRESH_TOKEN || '').trim();
 const PUBLIC_BASE_URL = String(process.env.PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
 const RENDER_API_KEY = String(process.env.RENDER_API_KEY || '').trim();
 const RENDER_SERVICE_ID = String(process.env.RENDER_SERVICE_ID || '').trim();
+const TTS_DIR = path.join(DATA_DIR, 'tts');
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(TTS_DIR, { recursive: true });
 
 const PRESETS = {
   suave: {
@@ -267,6 +271,7 @@ const runtime = {
   messagesSeen: 0,
   messagesAccepted: 0,
   promptsServed: 0,
+  spokenReplies: 0,
   suppressed: 0,
   queue: [],
   pending: null,
@@ -274,6 +279,8 @@ const runtime = {
   recentMessageIds: new Set(),
   lastCandidateAt: null,
   lastAiDispatchAt: 0,
+  awaitingBotResponseUntil: 0,
+  lastSpokenReply: null,
   twitch: {
     status: 'desconectado',
     lastError: null,
@@ -384,6 +391,15 @@ function sanitizeConfig(input = {}) {
     preferMentions: bool(input.preferMentions, base.preferMentions),
     preferFlirtyMessages: bool(input.preferFlirtyMessages, base.preferFlirtyMessages),
     adultFlirt: bool(input.adultFlirt, base.adultFlirt),
+    avatarEnabled: bool(input.avatarEnabled, base.avatarEnabled ?? true),
+    avatarImageUrl: str(input.avatarImageUrl, 500, base.avatarImageUrl || ''),
+    showSubtitles: bool(input.showSubtitles, base.showSubtitles ?? true),
+    ttsEnabled: bool(input.ttsEnabled, base.ttsEnabled ?? true),
+    ttsVoice: str(input.ttsVoice, 100, base.ttsVoice || 'pt-BR-FranciscaNeural'),
+    ttsRate: clampInt(input.ttsRate, -50, 50, base.ttsRate ?? 0),
+    ttsPitch: clampInt(input.ttsPitch, -50, 50, base.ttsPitch ?? 0),
+    ttsVolume: clampInt(input.ttsVolume, -50, 50, base.ttsVolume ?? 0),
+    botResponseWindowSeconds: clampInt(input.botResponseWindowSeconds, 20, 300, base.botResponseWindowSeconds ?? 120),
     ignoreUsers,
     customPersonality: str(input.customPersonality, 220, base.customPersonality)
   };
@@ -610,6 +626,105 @@ function publicBase(req) {
 }
 
 function callbackUrl(req) { return `${publicBase(req)}/auth/twitch/callback`; }
+
+
+const overlayClients = new Set();
+
+function overlayAuth(req, res, next) {
+  if (!OVERLAY_KEY || String(req.query.key || '') !== OVERLAY_KEY) {
+    return res.status(401).json({ error: 'Chave do avatar inválida.' });
+  }
+  next();
+}
+
+function overlayUrl(req) {
+  const base = publicBase(req);
+  const key = encodeURIComponent(OVERLAY_KEY);
+  return `${base}/avatar.html?key=${key}`;
+}
+
+function sendOverlayEvent(type, payload) {
+  const body = `event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`;
+  for (const client of [...overlayClients]) {
+    try { client.write(body); } catch { overlayClients.delete(client); }
+  }
+}
+
+function cleanSpeechText(value) {
+  return normalizeText(value)
+    .replace(/https?:\/\/\S+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 600);
+}
+
+function pruneTtsFiles(maxAgeMs = 15 * 60 * 1000) {
+  const now = Date.now();
+  try {
+    for (const name of fs.readdirSync(TTS_DIR)) {
+      const file = path.join(TTS_DIR, name);
+      try {
+        const st = fs.statSync(file);
+        if (st.isFile() && now - st.mtimeMs > maxAgeMs) fs.unlinkSync(file);
+      } catch {}
+    }
+  } catch {}
+}
+
+async function synthesizeTts(text) {
+  if (!config.ttsEnabled) return null;
+  const clean = cleanSpeechText(text);
+  if (!clean) return null;
+  const id = crypto.randomUUID();
+  const filename = `${id}.mp3`;
+  const file = path.join(TTS_DIR, filename);
+  const tts = new EdgeTTS({
+    voice: config.ttsVoice || 'pt-BR-FranciscaNeural',
+    lang: 'pt-BR',
+    outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
+    pitch: `${Number(config.ttsPitch || 0) >= 0 ? '+' : ''}${Number(config.ttsPitch || 0)}%`,
+    rate: `${Number(config.ttsRate || 0) >= 0 ? '+' : ''}${Number(config.ttsRate || 0)}%`,
+    volume: `${Number(config.ttsVolume || 0) >= 0 ? '+' : ''}${Number(config.ttsVolume || 0)}%`,
+    timeout: 15000
+  });
+  await tts.ttsPromise(clean, file);
+  pruneTtsFiles();
+  return `/tts/${filename}`;
+}
+
+async function publishBotReply(text, meta = {}) {
+  const clean = cleanSpeechText(text);
+  if (!clean) return;
+  let audioUrl = null;
+  let ttsError = null;
+  try {
+    audioUrl = await synthesizeTts(clean);
+  } catch (err) {
+    ttsError = err.message;
+    console.error('[tts]', err.message);
+  }
+  const payload = {
+    id: crypto.randomUUID(),
+    text: clean,
+    audioUrl,
+    aiName: config.aiName || 'CarolIA',
+    avatarEnabled: config.avatarEnabled !== false,
+    avatarImageUrl: config.avatarImageUrl || '',
+    showSubtitles: config.showSubtitles !== false,
+    ttsEnabled: config.ttsEnabled !== false,
+    ttsError,
+    createdAt: new Date().toISOString(),
+    ...meta
+  };
+  runtime.spokenReplies++;
+  runtime.lastSpokenReply = payload;
+  sendOverlayEvent('reply', payload);
+}
+
+function isExpectedBot(username) {
+  const u = String(username || '').trim().toLowerCase();
+  return u === BOT_DISPLAY_NAME.toLowerCase() || u === 'streamelements';
+}
 
 function timerLine(req) {
   const base = publicBase(req);
@@ -871,11 +986,21 @@ async function connectEventSub(url = 'wss://eventsub.wss.twitch.tv/ws') {
     if (type === 'notification' && msg?.payload?.subscription?.type === 'channel.chat.message') {
       const ev = msg.payload.event || {};
       runtime.twitch.lastMessageAt = new Date().toISOString();
+      const chatterLogin = String(ev.chatter_user_login || '').toLowerCase();
+      const messageText = ev.message?.text || '';
+      if (isExpectedBot(chatterLogin) && Date.now() <= runtime.awaitingBotResponseUntil) {
+        runtime.awaitingBotResponseUntil = 0;
+        publishBotReply(messageText, {
+          source: chatterLogin === BOT_DISPLAY_NAME.toLowerCase() ? 'custom-bot' : 'streamelements',
+          botName: ev.chatter_user_name || chatterLogin
+        }).catch(err => console.error('[overlay reply]', err.message));
+        return;
+      }
       acceptChatMessage({
         id: ev.message_id,
         username: ev.chatter_user_login,
         displayName: ev.chatter_user_name,
-        text: ev.message?.text,
+        text: messageText,
         badges: ev.badges || []
       });
       return;
@@ -938,6 +1063,45 @@ function bootstrapTwitchSession() {
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '200kb' }));
+
+app.get('/tts/:file', (req, res) => {
+  const name = path.basename(String(req.params.file || ''));
+  if (!/^[a-f0-9-]{36}\.mp3$/i.test(name)) return res.status(404).end();
+  const file = path.join(TTS_DIR, name);
+  if (!fs.existsSync(file)) return res.status(404).end();
+  res.set('Cache-Control', 'private, max-age=900');
+  res.type('audio/mpeg').sendFile(file);
+});
+
+app.get('/api/overlay-events', overlayAuth, (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+  res.flushHeaders?.();
+  res.write(`event: ready\ndata: ${JSON.stringify({ ok: true, aiName: config.aiName || 'CarolIA' })}\n\n`);
+  overlayClients.add(res);
+  const heartbeat = setInterval(() => {
+    try { res.write(': ping\n\n'); } catch {}
+  }, 20000);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    overlayClients.delete(res);
+  });
+});
+
+app.get('/api/overlay-config', overlayAuth, (_req, res) => {
+  res.json({
+    aiName: config.aiName || 'CarolIA',
+    avatarEnabled: config.avatarEnabled !== false,
+    avatarImageUrl: config.avatarImageUrl || '',
+    showSubtitles: config.showSubtitles !== false,
+    ttsEnabled: config.ttsEnabled !== false
+  });
+});
+
 app.use(express.static(path.join(ROOT, 'public')));
 
 app.get('/health', (_req, res) => {
@@ -989,6 +1153,7 @@ app.get('/prompt', timerAuth, (_req, res) => {
   const prompt = buildPrompt(item);
   runtime.promptsServed++;
   runtime.lastAiDispatchAt = Date.now();
+  runtime.awaitingBotResponseUntil = Date.now() + Number(config.botResponseWindowSeconds || 120) * 1000;
   runtime.recentAnsweredUsers.set(item.username, Date.now());
   runtime.pending = null;
   return res.send(prompt);
@@ -1020,6 +1185,9 @@ app.get('/api/status', panelAuth, (req, res) => {
     queueLength: runtime.queue.length,
     pendingUser: runtime.pending?.item?.displayName || null,
     promptsServed: runtime.promptsServed,
+    spokenReplies: runtime.spokenReplies,
+    lastSpokenReply: runtime.lastSpokenReply,
+    overlayClients: overlayClients.size,
     suppressed: runtime.suppressed,
     lastAiDispatchAt: runtime.lastAiDispatchAt ? new Date(runtime.lastAiDispatchAt).toISOString() : null,
     lastCandidateAt: runtime.lastCandidateAt,
@@ -1029,6 +1197,7 @@ app.get('/api/status', panelAuth, (req, res) => {
     refreshTokenConfiguredInEnv: Boolean(ENV_REFRESH_TOKEN),
     renderAutoPersistence: Boolean(RENDER_API_KEY && RENDER_SERVICE_ID),
     timerLine: timerLine(req),
+    overlayUrl: overlayUrl(req),
     callbackUrl: callbackUrl(req)
   });
 });
@@ -1040,6 +1209,7 @@ app.get('/api/setup', panelAuth, (req, res) => {
     baseUrl: publicBase(req),
     callbackUrl: callbackUrl(req),
     timerLine: timerLine(req),
+    overlayUrl: overlayUrl(req),
     oauthReady: Boolean(TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET)
   });
 });
@@ -1083,6 +1253,16 @@ app.post('/api/inject-test-message', panelAuth, (req, res) => {
   res.json({ ok: true, accepted, queueLength: runtime.queue.length });
 });
 
+app.post('/api/test-avatar', panelAuth, async (req, res) => {
+  try {
+    const text = cleanSpeechText(req.body?.text || 'Oi! Eu sou a CarolIA. Agora eu tenho corpo e voz para aparecer na live!');
+    await publishBotReply(text, { source: 'panel-test', botName: config.aiName || 'CarolIA' });
+    res.json({ ok: true, text, overlayClients: overlayClients.size });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/clear-queue', panelAuth, (_req, res) => {
   runtime.queue = [];
   runtime.pending = null;
@@ -1104,6 +1284,7 @@ app.listen(PORT, () => {
   console.log(`Canal: ${CHANNEL_NAME}`);
   console.log(`Saída esperada do StreamElements: ${BOT_DISPLAY_NAME}`);
   if (!PANEL_KEY || !TIMER_KEY) console.warn('[AVISO] PANEL_KEY e TIMER_KEY precisam estar configuradas.');
+  if (!OVERLAY_KEY) console.warn('[AVISO] OVERLAY_KEY/TIMER_KEY ausente; o avatar não conseguirá conectar.');
   if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) console.warn('[AVISO] Configure TWITCH_CLIENT_ID e TWITCH_CLIENT_SECRET para ler o chat sem OBS.');
   bootstrapTwitchSession();
 });

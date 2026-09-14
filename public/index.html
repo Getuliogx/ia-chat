@@ -137,6 +137,48 @@
         </article>
       </section>
 
+
+      <section class="grid">
+        <article class="card">
+          <h2>3. Avatar da IA — corpo + voz</h2>
+          <p>O avatar recebe a resposta publicada pelo <b>icarolzinhabot</b> (ou StreamElements), fala o mesmo texto e anima o corpo/boca.</p>
+          <label class="check"><input id="avatarEnabled" type="checkbox"> Mostrar corpo/avatar</label>
+          <label class="check"><input id="showSubtitles" type="checkbox"> Mostrar legenda da fala</label>
+          <label class="check"><input id="ttsEnabled" type="checkbox"> Ativar voz TTS</label>
+          <label>Imagem personalizada do corpo (opcional)<input id="avatarImageUrl" placeholder="https://.../avatar.png"></label>
+          <p class="hint">Se ficar vazio, usa o corpo animado que já vem no projeto. Para usar sua personagem, coloque uma PNG/WebP transparente por URL.</p>
+          <div class="two">
+            <label>Voz TTS<input id="ttsVoice" value="pt-BR-FranciscaNeural"></label>
+            <label>Janela para reconhecer resposta do bot (seg)<input id="botResponseWindowSeconds" type="number" min="20" max="300"></label>
+          </div>
+          <div class="two">
+            <label>Velocidade (-50 a 50)<input id="ttsRate" type="number" min="-50" max="50"></label>
+            <label>Tom (-50 a 50)<input id="ttsPitch" type="number" min="-50" max="50"></label>
+          </div>
+          <label>Volume TTS (-50 a 50)<input id="ttsVolume" type="number" min="-50" max="50"></label>
+        </article>
+
+        <article class="card">
+          <h2>URL para aparecer na live</h2>
+          <p>Use esta URL como <b>Fonte de Navegador / Browser Source</b> no programa da live. Fundo transparente, corpo inteiro, legenda e áudio.</p>
+          <textarea id="overlayUrl" rows="4" readonly></textarea>
+          <div class="row">
+            <button data-copy="overlayUrl">Copiar URL do Avatar</button>
+            <button id="openOverlay">Abrir Avatar</button>
+          </div>
+          <label>Texto de teste</label>
+          <textarea id="avatarTestText" rows="3">Oi! Eu sou a CarolIA. Agora eu tenho corpo e voz para aparecer na live!</textarea>
+          <button id="testAvatar" class="primary">Testar corpo + voz agora</button>
+          <div id="avatarMsg" class="msg"></div>
+          <div class="callout">
+            <strong>Configuração sugerida da fonte</strong>
+            <div>Largura: <b>900</b> • Altura: <b>1200</b></div>
+            <div>Fundo: <b>transparente</b></div>
+            <div>Áudio: deixe a fonte reproduzir o MP3 gerado pelo servidor.</div>
+          </div>
+        </article>
+      </section>
+
       <section class="grid">
         <article class="card">
           <h2>Teste de personalidade</h2>
@@ -155,6 +197,8 @@
             <div><span>Válidas</span><b id="messagesAccepted">0</b></div>
             <div><span>Na fila</span><b id="queueLength">0</b></div>
             <div><span>Prompts enviados</span><b id="promptsServed">0</b></div>
+            <div><span>Falas do avatar</span><b id="spokenReplies">0</b></div>
+            <div><span>Overlays conectados</span><b id="overlayClients">0</b></div>
           </div>
           <label>Último erro Twitch</label>
           <pre id="lastError" class="smallpre">Nenhum.</pre>

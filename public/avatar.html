@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CarolIA • Avatar Live</title>
+  <link rel="stylesheet" href="/avatar.css">
+</head>
+<body>
+  <main id="stage" class="stage" aria-live="polite">
+    <div id="connection" class="connection">CONECTANDO</div>
+
+    <section id="avatarWrap" class="avatar-wrap">
+      <img id="customAvatar" class="custom-avatar hidden" alt="Avatar da CarolIA">
+
+      <svg id="defaultAvatar" class="avatar-svg" viewBox="0 0 620 1120" role="img" aria-label="Avatar da CarolIA">
+        <defs>
+          <linearGradient id="hair" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ff8fc9"/>
+            <stop offset="0.48" stop-color="#d455a2"/>
+            <stop offset="1" stop-color="#7e3477"/>
+          </linearGradient>
+          <linearGradient id="hoodie" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2a2134"/>
+            <stop offset="1" stop-color="#100d16"/>
+          </linearGradient>
+          <linearGradient id="skirt" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#1a1422"/>
+            <stop offset=".5" stop-color="#39213b"/>
+            <stop offset="1" stop-color="#17101f"/>
+          </linearGradient>
+          <radialGradient id="skin" cx="45%" cy="28%" r="75%">
+            <stop offset="0" stop-color="#ffe8df"/>
+            <stop offset="1" stop-color="#f0bcae"/>
+          </radialGradient>
+          <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000" flood-opacity=".3"/>
+          </filter>
+        </defs>
+
+        <ellipse cx="310" cy="1080" rx="190" ry="26" fill="#000" opacity=".22"/>
+
+        <g id="body" filter="url(#shadow)">
+          <path d="M185 790 C158 858 153 931 170 1009 L235 1010 C238 934 246 860 268 805 Z" fill="#edb3a8"/>
+          <path d="M352 804 C374 866 382 938 385 1010 L450 1009 C467 932 462 858 435 790 Z" fill="#edb3a8"/>
+          <path d="M150 1004 C170 994 208 994 237 1006 L240 1066 C210 1084 160 1082 130 1062 C136 1044 142 1021 150 1004 Z" fill="#17131d"/>
+          <path d="M383 1006 C412 994 450 994 470 1004 C478 1021 484 1044 490 1062 C460 1082 410 1084 380 1066 Z" fill="#17131d"/>
+
+          <path d="M196 664 C202 739 176 817 160 857 C196 884 248 896 310 896 C372 896 424 884 460 857 C444 817 418 739 424 664 Z" fill="url(#skirt)" stroke="#5b3560" stroke-width="8"/>
+          <path d="M200 690 C238 720 381 720 420 690" fill="none" stroke="#ed6cae" stroke-width="9" opacity=".8"/>
+
+          <path d="M184 422 C145 468 124 544 139 655 C160 711 209 738 310 738 C411 738 460 711 481 655 C496 544 475 468 436 422 C397 383 348 366 310 366 C272 366 223 383 184 422 Z" fill="url(#hoodie)" stroke="#4f3b58" stroke-width="10"/>
+          <path d="M214 458 C248 430 370 430 405 458 L378 597 C345 618 275 618 242 597 Z" fill="#211629" opacity=".9"/>
+          <path d="M250 465 L280 620 M370 465 L340 620" stroke="#df72b3" stroke-width="10" stroke-linecap="round"/>
+          <circle cx="281" cy="622" r="10" fill="#f5b4d8"/><circle cx="339" cy="622" r="10" fill="#f5b4d8"/>
+          <path d="M263 518 Q310 548 357 518" fill="none" stroke="#f6a3ce" stroke-width="7" stroke-linecap="round" opacity=".75"/>
+
+          <path d="M176 450 C118 492 100 589 116 693 C120 723 145 747 173 737 C198 728 202 700 195 674 C185 623 194 566 222 523 Z" fill="#f0bcae"/>
+          <path d="M444 450 C502 492 520 589 504 693 C500 723 475 747 447 737 C422 728 418 700 425 674 C435 623 426 566 398 523 Z" fill="#f0bcae"/>
+          <path d="M111 686 C118 658 155 651 177 673 C197 693 190 728 168 748 C143 766 107 740 111 686 Z" fill="#f5c8bc"/>
+          <path d="M509 686 C502 658 465 651 443 673 C423 693 430 728 452 748 C477 766 513 740 509 686 Z" fill="#f5c8bc"/>
+        </g>
+
+        <g id="head" class="head" filter="url(#shadow)">
+          <path d="M137 132 C182 42 413 28 484 136 C533 212 509 377 437 427 C395 456 348 466 310 466 C272 466 225 456 183 427 C111 377 87 212 137 132 Z" fill="url(#hair)"/>
+          <path d="M173 175 C188 100 256 74 310 74 C364 74 432 100 447 175 C466 269 423 384 310 392 C197 384 154 269 173 175 Z" fill="url(#skin)"/>
+          <path d="M150 206 C150 101 229 58 310 58 C395 58 470 104 472 210 C431 179 401 158 374 131 C345 173 290 202 214 213 C192 216 171 214 150 206 Z" fill="url(#hair)"/>
+          <path d="M132 173 C111 263 118 390 178 438 C152 354 171 260 201 205 Z" fill="url(#hair)"/>
+          <path d="M488 173 C509 263 502 390 442 438 C468 354 449 260 419 205 Z" fill="url(#hair)"/>
+
+          <g id="eyes" class="eyes">
+            <ellipse cx="245" cy="267" rx="34" ry="23" fill="#fff"/>
+            <ellipse cx="375" cy="267" rx="34" ry="23" fill="#fff"/>
+            <ellipse cx="250" cy="270" rx="16" ry="19" fill="#7b3f89"/>
+            <ellipse cx="370" cy="270" rx="16" ry="19" fill="#7b3f89"/>
+            <ellipse cx="250" cy="272" rx="8" ry="11" fill="#20162a"/>
+            <ellipse cx="370" cy="272" rx="8" ry="11" fill="#20162a"/>
+            <circle cx="255" cy="264" r="5" fill="#fff"/><circle cx="375" cy="264" r="5" fill="#fff"/>
+            <path d="M211 244 Q246 221 278 244" fill="none" stroke="#593453" stroke-width="10" stroke-linecap="round"/>
+            <path d="M342 244 Q376 221 409 244" fill="none" stroke="#593453" stroke-width="10" stroke-linecap="round"/>
+          </g>
+
+          <path d="M286 310 Q310 322 334 310" fill="none" stroke="#cb817d" stroke-width="6" stroke-linecap="round" opacity=".7"/>
+          <ellipse cx="214" cy="324" rx="34" ry="15" fill="#ef8fa5" opacity=".25"/>
+          <ellipse cx="406" cy="324" rx="34" ry="15" fill="#ef8fa5" opacity=".25"/>
+
+          <g id="mouth" class="mouth">
+            <path class="mouth-idle" d="M274 347 Q310 371 346 347" fill="none" stroke="#a94666" stroke-width="9" stroke-linecap="round"/>
+            <ellipse class="mouth-talk" cx="310" cy="357" rx="34" ry="24" fill="#75243f"/>
+            <path class="mouth-talk tongue" d="M286 366 Q310 382 334 366 Q329 386 310 390 Q291 386 286 366 Z" fill="#e87a96"/>
+          </g>
+
+          <path d="M251 105 C230 128 219 159 217 198" fill="none" stroke="#ffb4d8" stroke-width="12" stroke-linecap="round" opacity=".55"/>
+        </g>
+
+        <g class="sparkles" opacity=".86">
+          <path d="M93 384 l10 21 21 10-21 10-10 21-10-21-21-10 21-10z" fill="#ffd5ee"/>
+          <path d="M529 509 l7 15 15 7-15 7-7 15-7-15-15-7 15-7z" fill="#ffc2e5"/>
+          <circle cx="94" cy="574" r="8" fill="#e877ba"/>
+          <circle cx="540" cy="344" r="10" fill="#e877ba"/>
+        </g>
+      </svg>
+    </section>
+
+    <section id="bubble" class="bubble hidden">
+      <div id="name" class="name">CarolIA</div>
+      <div id="subtitle" class="subtitle"></div>
+    </section>
+
+    <audio id="voice" preload="auto"></audio>
+  </main>
+  <script src="/avatar.js"></script>
+</body>
+</html>

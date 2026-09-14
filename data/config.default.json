@@ -60,5 +60,14 @@
     "own3d",
     "stay_hydrated_bot"
   ],
-  "customPersonality": "Divertida, espontânea, provocante e carismática. Use flerte e duplo sentido leve quando combinar."
+  "customPersonality": "Divertida, espontânea, provocante e carismática. Use flerte e duplo sentido leve quando combinar.",
+  "avatarEnabled": true,
+  "avatarImageUrl": "",
+  "showSubtitles": true,
+  "ttsEnabled": true,
+  "ttsVoice": "pt-BR-FranciscaNeural",
+  "ttsRate": 0,
+  "ttsPitch": 0,
+  "ttsVolume": 0,
+  "botResponseWindowSeconds": 120
 }

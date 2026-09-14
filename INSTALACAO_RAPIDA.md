@@ -1,6 +1,6 @@
 # INSTALAÇÃO RÁPIDA — CarolIA / icarolinaporto
 
-Esta versão é **sem OBS**.
+A leitura e a IA continuam **sem depender do OBS**. Para o novo corpo aparecer dentro do vídeo da live, use a URL de avatar como Browser Source no software/overlay que compõe a transmissão.
 
 - Canal lido: `icarolinaporto`
 - Conta que autoriza a leitura: **a SUA conta Twitch (MOD do canal)**
@@ -91,3 +91,16 @@ No painel:
 3. Use **Simular prompt** para conferir a personalidade sem gastar IA.
 4. Use **Colocar teste na fila** para testar o fluxo do próximo Timer.
 
+
+
+## 8. Corpo + voz na live
+
+Depois do deploy, abra o painel e procure **Avatar da IA — corpo + voz**.
+
+1. Abra/copie a **URL do Avatar**.
+2. Adicione como Browser Source (sugestão 900 × 1200).
+3. Deixe o áudio da fonte habilitado.
+4. Clique em **Testar corpo + voz agora** no painel.
+5. Se quiser seu próprio personagem, informe uma URL de PNG/WebP transparente em **Imagem personalizada do corpo**.
+
+A voz padrão é `pt-BR-FranciscaNeural`.

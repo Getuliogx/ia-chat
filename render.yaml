@@ -16,3 +16,5 @@ services:
         sync: false
       - key: TIMER_KEY
         generateValue: true
+      - key: OVERLAY_KEY
+        generateValue: true

@@ -61,7 +61,8 @@ function fill(c) {
   const ids = [
     'enabled','aiName','responseLength','profanity','adultFlirt','mentionUser','answerChance',
     'cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ignoreCommands',
-    'ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','customPersonality'
+    'ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','customPersonality',
+    'avatarEnabled','avatarImageUrl','showSubtitles','ttsEnabled','ttsVoice','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds'
   ];
   for (const id of ids) {
     const el = $(id); if (!el) continue;
@@ -77,10 +78,10 @@ function fill(c) {
 
 function collect() {
   const out = { ...cfg };
-  ['enabled','adultFlirt','mentionUser','ignoreCommands','ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages']
+  ['enabled','adultFlirt','mentionUser','ignoreCommands','ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','avatarEnabled','showSubtitles','ttsEnabled']
     .forEach(id => out[id] = $(id).checked);
-  ['aiName','responseLength','customPersonality'].forEach(id => out[id] = $(id).value);
-  ['profanity','answerChance','cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars']
+  ['aiName','responseLength','customPersonality','avatarImageUrl','ttsVoice'].forEach(id => out[id] = $(id).value);
+  ['profanity','answerChance','cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds']
     .forEach(id => out[id] = Number($(id).value));
   sliderDefs.forEach(([id]) => out[id] = Number($(id).value));
   out.ignoreUsers = $('ignoreUsers').value.split(/\n|,/).map(s => s.trim()).filter(Boolean);
@@ -92,6 +93,8 @@ async function loadSetup() {
   $('timerLine').value = s.timerLine || '';
   $('callbackUrl').value = s.callbackUrl || '';
   $('expectedBot').textContent = s.expectedBotName || 'icarolzinhabot';
+  $('overlayUrl').value = s.overlayUrl || '';
+  $('openOverlay').dataset.url = s.overlayUrl || '';
 }
 
 async function login() {
@@ -152,9 +155,12 @@ async function refreshStatus() {
     $('messagesAccepted').textContent = s.messagesAccepted;
     $('queueLength').textContent = s.queueLength;
     $('promptsServed').textContent = s.promptsServed;
+    $('spokenReplies').textContent = s.spokenReplies || 0;
+    $('overlayClients').textContent = s.overlayClients || 0;
     $('lastError').textContent = s.twitch?.lastError || 'Nenhum.';
     $('callbackUrl').value = s.callbackUrl || $('callbackUrl').value;
     $('timerLine').value = s.timerLine || $('timerLine').value;
+    $('overlayUrl').value = s.overlayUrl || $('overlayUrl').value;
   } catch {}
 }
 
@@ -177,6 +183,26 @@ async function injectTest() {
     $('promptPreview').textContent = data.accepted ? `Mensagem colocada na fila. Fila: ${data.queueLength}` : 'Mensagem rejeitada pelos filtros.';
     refreshStatus();
   } catch(e) { $('promptPreview').textContent = 'Erro: '+e.message; }
+}
+
+async function testAvatar() {
+  const msg = $('avatarMsg');
+  try {
+    msg.textContent = 'Gerando voz e enviando para o avatar...';
+    msg.className = 'msg';
+    const data = await api('/api/test-avatar', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:$('avatarTestText').value})
+    });
+    msg.textContent = data.overlayClients > 0
+      ? `Teste enviado para ${data.overlayClients} overlay(s) conectado(s).`
+      : 'Teste gerado, mas nenhum overlay está aberto/conectado.';
+    msg.className = data.overlayClients > 0 ? 'msg ok' : 'msg err';
+    refreshStatus();
+  } catch (e) {
+    msg.textContent = e.message;
+    msg.className = 'msg err';
+  }
 }
 
 async function connectTwitch() {
@@ -212,6 +238,11 @@ $('simulateBtn').addEventListener('click', simulate);
 $('injectBtn').addEventListener('click', injectTest);
 $('connectTwitch').addEventListener('click', connectTwitch);
 $('reconnectTwitch').addEventListener('click', reconnectTwitch);
+$('testAvatar').addEventListener('click', testAvatar);
+$('openOverlay').addEventListener('click', () => {
+  const url = $('openOverlay').dataset.url || $('overlayUrl').value;
+  if (url) window.open(url, '_blank', 'noopener');
+});
 $('clearQueue').addEventListener('click', async () => { await api('/api/clear-queue',{method:'POST'}); refreshStatus(); });
 setInterval(refreshStatus, 3000);
 if (key) login();

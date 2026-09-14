@@ -1,9 +1,25 @@
+# CarolIA 5.0 — corpo + voz na live
+
+Esta versão mantém o fluxo original Twitch → Render → StreamElements `$(ai)` e adiciona uma saída visual em tempo real:
+
+- avatar de corpo inteiro incluído no projeto;
+- boca/corpo animados enquanto fala;
+- legenda da resposta;
+- TTS neural em PT-BR gerado como MP3 no servidor;
+- suporte a PNG/WebP transparente personalizado;
+- URL protegida para usar como Browser Source;
+- botão de teste direto no painel.
+
+Veja `AVATAR_LIVE.md` para a instalação da parte visual/áudio.
+
+---
+
 
 ## Correção de distribuição de respostas (4.1.1)
 
 A fila agora mantém apenas uma mensagem pendente por usuário e faz rodízio entre pessoas quando há várias esperando. Perguntas, menções e mensagens prioritárias continuam valendo, mas não permitem que um único usuário monopolize as respostas da IA.
 
-# CarolIA — icarolinaporto — sem OBS
+# CarolIA — icarolinaporto — IA sem OBS + avatar para a live
 
 Sistema para acompanhar automaticamente o chat da Twitch `icarolinaporto`, selecionar mensagens e responder usando a IA nativa `$(ai)` do StreamElements.
 
@@ -31,7 +47,7 @@ StreamElements $(ai)
 icarolzinhabot (se já estiver configurado como Custom Bot Name)
 ```
 
-Não usa OBS, Custom Widget ou API externa de IA.
+A leitura do chat e a geração da resposta continuam sem depender do OBS e sem API externa de IA. O novo corpo/voz é entregue por uma URL de Browser Source para ser composta na transmissão.
 
 ## Por que precisa autorizar sua Twitch?
 
