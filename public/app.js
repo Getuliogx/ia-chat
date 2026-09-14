@@ -246,6 +246,22 @@ async function setupSeRelay() {
   } catch (e) { alert(e.message); }
 }
 
+
+async function findRenderAccount() {
+  const out = $('renderAccountResult');
+  if (!out) return;
+  out.textContent = 'Consultando a conta do Render...';
+  out.className = 'smallpre';
+  try {
+    const data = await api('/api/render-account');
+    out.textContent = `E-MAIL DA CONTA RENDER: ${data.email}${data.name ? `\nNome: ${data.name}` : ''}${data.id ? `\nID: ${data.id}` : ''}`;
+    out.className = 'smallpre msg ok';
+  } catch (e) {
+    out.textContent = e.message;
+    out.className = 'smallpre msg err';
+  }
+}
+
 async function reconnectTwitch() {
   try {
     await api('/api/reconnect-twitch', {method:'POST'});
@@ -272,6 +288,7 @@ $('simulateBtn').addEventListener('click', simulate);
 $('injectBtn').addEventListener('click', injectTest);
 $('connectTwitch').addEventListener('click', connectTwitch);
 if ($('setupSeRelay')) $('setupSeRelay').addEventListener('click', setupSeRelay);
+if ($('findRenderAccount')) $('findRenderAccount').addEventListener('click', findRenderAccount);
 $('reconnectTwitch').addEventListener('click', reconnectTwitch);
 $('testAvatar').addEventListener('click', testAvatar);
 $('openOverlay').addEventListener('click', () => {

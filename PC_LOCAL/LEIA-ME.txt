@@ -1,0 +1,11 @@
+CarolIA V10 - IA LOCAL LEVE
+
+1) Dê dois cliques em INICIAR_CAROLIA_LOCAL.cmd.
+2) Na primeira vez ele baixa automaticamente:
+   - llama.cpp para Windows x64 (CPU)
+   - Qwen3 0.6B Q4_K_M (~484 MB)
+3) Depois ele inicia sozinho em 127.0.0.1:11435 usando somente 2 threads.
+4) Deixe o avatar da CarolIA aberto como Browser Source no OBS.
+5) Para desligar depois da live: PARAR_CAROLIA_LOCAL.cmd.
+
+Não usa Ollama, não instala serviço e não precisa de API/chave/cota de IA.

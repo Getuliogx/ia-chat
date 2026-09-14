@@ -1752,6 +1752,99 @@ app.get('/api/setup', panelAuth, (req, res) => {
   });
 });
 
+
+function findFirstEmail(value, depth = 0) {
+  if (depth > 8 || value == null) return '';
+  if (typeof value === 'string') {
+    const m = value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    return m ? m[0] : '';
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const email = findFirstEmail(item, depth + 1);
+      if (email) return email;
+    }
+    return '';
+  }
+  if (typeof value === 'object') {
+    for (const [k, v] of Object.entries(value)) {
+      if (/email/i.test(k) && typeof v === 'string' && v.includes('@')) return v;
+    }
+    for (const v of Object.values(value)) {
+      const email = findFirstEmail(v, depth + 1);
+      if (email) return email;
+    }
+  }
+  return '';
+}
+
+function findFirstField(value, names, depth = 0) {
+  if (depth > 6 || value == null) return '';
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findFirstField(item, names, depth + 1);
+      if (found) return found;
+    }
+    return '';
+  }
+  if (typeof value === 'object') {
+    for (const name of names) {
+      const entry = Object.entries(value).find(([k]) => k.toLowerCase() === name.toLowerCase());
+      if (entry && ['string','number'].includes(typeof entry[1])) return String(entry[1]);
+    }
+    for (const v of Object.values(value)) {
+      const found = findFirstField(v, names, depth + 1);
+      if (found) return found;
+    }
+  }
+  return '';
+}
+
+app.get('/api/render-account', panelAuth, async (_req, res) => {
+  if (!RENDER_API_KEY) {
+    return res.status(409).json({
+      ok: false,
+      apiKeyConfigured: false,
+      error: 'RENDER_API_KEY não está configurada neste serviço. Sem uma API key já salva no Render, o próprio projeto não consegue descobrir o e-mail da conta.'
+    });
+  }
+
+  const headers = {
+    'Accept': 'application/json',
+    'Authorization': `Bearer ${RENDER_API_KEY}`
+  };
+
+  try {
+    let user = null;
+    let owners = null;
+    try { user = await rawFetchJson('https://api.render.com/v1/users', { headers }); } catch {}
+    let email = findFirstEmail(user);
+    if (!email) {
+      try { owners = await rawFetchJson('https://api.render.com/v1/owners?limit=100', { headers }); } catch {}
+      email = findFirstEmail(owners);
+    }
+    const source = email ? (findFirstEmail(user) ? 'users' : 'owners') : 'none';
+    const name = findFirstField(user, ['name','displayName','display_name']) || findFirstField(owners, ['name']);
+    const id = findFirstField(user, ['id','userId','user_id']) || findFirstField(owners, ['id','ownerId','owner_id']);
+
+    if (!email) {
+      return res.status(404).json({
+        ok: false,
+        apiKeyConfigured: true,
+        error: 'A API key do Render funciona, mas a API não retornou um e-mail legível para esta conta.'
+      });
+    }
+
+    res.json({ ok: true, apiKeyConfigured: true, email, name, id, source });
+  } catch (err) {
+    res.status(err.status || 502).json({
+      ok: false,
+      apiKeyConfigured: true,
+      error: `Não foi possível consultar a conta do Render: ${err.message}`
+    });
+  }
+});
+
 app.get('/api/twitch-auth-url', panelAuth, (req, res) => {
   if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
     return res.status(400).json({ error: 'Configure TWITCH_CLIENT_ID e TWITCH_CLIENT_SECRET no Render primeiro.' });
