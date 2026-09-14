@@ -249,15 +249,67 @@ async function setupSeRelay() {
 
 async function findRenderAccount() {
   const out = $('renderAccountResult');
+  const openBtn = $('openRenderService');
   if (!out) return;
-  out.textContent = 'Consultando a conta do Render...';
+  out.textContent = 'Lendo os metadados do serviço e procurando pistas no GitHub...';
   out.className = 'smallpre';
+  if (openBtn) openBtn.classList.add('hidden');
   try {
     const data = await api('/api/render-account');
-    out.textContent = `E-MAIL DA CONTA RENDER: ${data.email}${data.name ? `\nNome: ${data.name}` : ''}${data.id ? `\nID: ${data.id}` : ''}`;
-    out.className = 'smallpre msg ok';
+    const lines = [];
+
+    if (data.direct?.email) {
+      lines.push(`✅ E-MAIL CONFIRMADO PELA API DO RENDER: ${data.direct.email}`);
+      if (data.direct.name) lines.push(`Nome: ${data.direct.name}`);
+      if (data.direct.id) lines.push(`ID: ${data.direct.id}`);
+    } else {
+      lines.push('A conta não tem RENDER_API_KEY salva; então não existe acesso autorizado ao e-mail privado do login.');
+    }
+
+    lines.push('');
+    lines.push('DADOS DO PRÓPRIO SERVIÇO:');
+    if (data.render?.serviceName) lines.push(`Serviço: ${data.render.serviceName}`);
+    if (data.render?.serviceId) lines.push(`Service ID: ${data.render.serviceId}`);
+    if (data.render?.repoSlug) lines.push(`Repositório ligado: ${data.render.repoSlug}`);
+    if (data.render?.commitSha) lines.push(`Commit publicado: ${data.render.commitSha}`);
+
+    const real = (data.candidates || []).filter(x => !x.noreply);
+    const noreply = (data.candidates || []).filter(x => x.noreply);
+    if (real.length) {
+      lines.push('');
+      lines.push('📧 E-MAIL(S) REAL(IS) ENCONTRADO(S) NO PROJETO/HISTÓRICO:');
+      real.forEach((x,i) => lines.push(`${i+1}. ${x.email} — ${x.source}${x.details ? ` (${x.details})` : ''}`));
+      lines.push('');
+      lines.push('Esses são candidatos encontrados em dados públicos do repositório. O projeto não consegue provar qual deles foi usado como login do Render sem autenticação da conta.');
+    } else {
+      lines.push('');
+      lines.push('Nenhum e-mail real público apareceu nos commits/perfil do GitHub.');
+    }
+
+    if (noreply.length) {
+      lines.push('');
+      lines.push(`GitHub noreply encontrado: ${noreply[0].email} (isso identifica o GitHub, mas não é um Gmail utilizável).`);
+    }
+
+    if (data.github?.owner) {
+      lines.push('');
+      lines.push(`Conta GitHub ligada ao deploy: @${data.github.owner}`);
+    }
+
+    if (data.warning) {
+      lines.push('');
+      lines.push(`ℹ ${data.warning}`);
+    }
+
+    out.textContent = lines.join('\n');
+    out.className = real.length || data.direct?.email ? 'smallpre msg ok' : 'smallpre';
+
+    if (openBtn && data.render?.dashboardUrl) {
+      openBtn.dataset.url = data.render.dashboardUrl;
+      openBtn.classList.remove('hidden');
+    }
   } catch (e) {
-    out.textContent = e.message;
+    out.textContent = `Erro ao analisar o projeto: ${e.message}`;
     out.className = 'smallpre msg err';
   }
 }
@@ -289,6 +341,7 @@ $('injectBtn').addEventListener('click', injectTest);
 $('connectTwitch').addEventListener('click', connectTwitch);
 if ($('setupSeRelay')) $('setupSeRelay').addEventListener('click', setupSeRelay);
 if ($('findRenderAccount')) $('findRenderAccount').addEventListener('click', findRenderAccount);
+if ($('openRenderService')) $('openRenderService').addEventListener('click', () => { const u=$('openRenderService').dataset.url; if (u) window.open(u,'_blank','noopener'); });
 $('reconnectTwitch').addEventListener('click', reconnectTwitch);
 $('testAvatar').addEventListener('click', testAvatar);
 $('openOverlay').addEventListener('click', () => {

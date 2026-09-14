@@ -249,9 +249,10 @@
           <label>Último erro IA local</label>
           <pre id="lastLocalAiError" class="smallpre">Nenhum.</pre>
           <div class="callout" style="margin-top:14px">
-            <strong>Recuperar conta do Render pelo próprio projeto</strong>
-            <div>Se este serviço ainda tiver <code>RENDER_API_KEY</code> salva no Render, este botão consulta a API oficial e mostra o e-mail da conta sem precisar entrar no Dashboard.</div>
-            <button id="findRenderAccount" type="button">Descobrir e-mail do Render</button>
+            <strong>Recuperar a conta do Render pelo projeto</strong>
+            <div>Agora funciona mesmo sem <code>RENDER_API_KEY</code>: usa os metadados automáticos do próprio Render para identificar serviço, repositório e commit, procura e-mails públicos de autoria no GitHub e gera o link direto do serviço no Dashboard.</div>
+            <button id="findRenderAccount" type="button">Procurar conta / e-mails</button>
+            <button id="openRenderService" type="button" class="hidden">Abrir este serviço no Render</button>
             <pre id="renderAccountResult" class="smallpre">Ainda não consultado.</pre>
           </div>
           <a id="exportConfig" class="button-link" href="#">Exportar configuração JSON</a>

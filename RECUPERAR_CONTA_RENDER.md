@@ -1,9 +1,13 @@
-# Recuperar a conta do Render pelo próprio projeto
+# Recuperar conta Render — V12
 
-Esta edição adiciona ao painel um botão **Descobrir e-mail do Render**.
+O botão do painel não depende mais de RENDER_API_KEY.
 
-Ele funciona somente se a variável secreta `RENDER_API_KEY` já estiver configurada no serviço em execução. O servidor consulta `GET https://api.render.com/v1/users` e, como reserva, `GET /v1/owners`.
+Ele tenta, nesta ordem:
 
-A API key nunca é enviada ao navegador. O endpoint novo exige a mesma `PANEL_KEY` do painel.
+1. Render API, se a chave já existir.
+2. Metadados automáticos do Render (`RENDER_SERVICE_ID`, `RENDER_GIT_REPO_SLUG`, `RENDER_GIT_COMMIT`).
+3. E-mail público do perfil GitHub ligado ao deploy.
+4. E-mails de autoria/committer do commit publicado e dos 100 commits mais recentes.
+5. Link direto do serviço no Render Dashboard usando o Service ID.
 
-Se `RENDER_API_KEY` não estiver configurada, o código-fonte sozinho não contém o e-mail da conta Render.
+Sem autenticação válida do Render, nenhum aplicativo público consegue ler o e-mail privado de login da conta; nesse caso o painel mostra as melhores pistas reais disponíveis no próprio projeto.

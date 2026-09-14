@@ -1801,48 +1801,113 @@ function findFirstField(value, names, depth = 0) {
 }
 
 app.get('/api/render-account', panelAuth, async (_req, res) => {
-  if (!RENDER_API_KEY) {
-    return res.status(409).json({
-      ok: false,
-      apiKeyConfigured: false,
-      error: 'RENDER_API_KEY não está configurada neste serviço. Sem uma API key já salva no Render, o próprio projeto não consegue descobrir o e-mail da conta.'
-    });
-  }
+  const repoSlug = String(process.env.RENDER_GIT_REPO_SLUG || '').trim();
+  const commitSha = String(process.env.RENDER_GIT_COMMIT || '').trim();
+  const serviceId = String(process.env.RENDER_SERVICE_ID || '').trim();
+  const serviceName = String(process.env.RENDER_SERVICE_NAME || '').trim();
+  const externalUrl = String(process.env.RENDER_EXTERNAL_URL || '').trim();
+  const dashboardUrl = serviceId ? `https://dashboard.render.com/web/${encodeURIComponent(serviceId)}` : 'https://dashboard.render.com/';
 
-  const headers = {
-    'Accept': 'application/json',
-    'Authorization': `Bearer ${RENDER_API_KEY}`
+  const result = {
+    ok: true,
+    direct: null,
+    candidates: [],
+    render: { serviceId, serviceName, externalUrl, repoSlug, commitSha, dashboardUrl },
+    github: { owner: repoSlug.includes('/') ? repoSlug.split('/')[0] : '', repo: repoSlug.includes('/') ? repoSlug.split('/')[1] : '' },
+    apiKeyConfigured: Boolean(RENDER_API_KEY)
   };
 
-  try {
-    let user = null;
-    let owners = null;
-    try { user = await rawFetchJson('https://api.render.com/v1/users', { headers }); } catch {}
-    let email = findFirstEmail(user);
-    if (!email) {
-      try { owners = await rawFetchJson('https://api.render.com/v1/owners?limit=100', { headers }); } catch {}
-      email = findFirstEmail(owners);
+  // 1) Melhor caso: a chave da API já existe no serviço.
+  if (RENDER_API_KEY) {
+    const headers = { 'Accept': 'application/json', 'Authorization': `Bearer ${RENDER_API_KEY}` };
+    try {
+      let user = null;
+      let owners = null;
+      try { user = await rawFetchJson('https://api.render.com/v1/users', { headers }); } catch {}
+      let email = findFirstEmail(user);
+      if (!email) {
+        try { owners = await rawFetchJson('https://api.render.com/v1/owners?limit=100', { headers }); } catch {}
+        email = findFirstEmail(owners);
+      }
+      if (email) {
+        result.direct = {
+          email,
+          name: findFirstField(user, ['name','displayName','display_name']) || findFirstField(owners, ['name']),
+          id: findFirstField(user, ['id','userId','user_id']) || findFirstField(owners, ['id','ownerId','owner_id']),
+          source: 'Render API'
+        };
+      }
+    } catch (err) {
+      result.renderApiError = err.message;
     }
-    const source = email ? (findFirstEmail(user) ? 'users' : 'owners') : 'none';
-    const name = findFirstField(user, ['name','displayName','display_name']) || findFirstField(owners, ['name']);
-    const id = findFirstField(user, ['id','userId','user_id']) || findFirstField(owners, ['id','ownerId','owner_id']);
-
-    if (!email) {
-      return res.status(404).json({
-        ok: false,
-        apiKeyConfigured: true,
-        error: 'A API key do Render funciona, mas a API não retornou um e-mail legível para esta conta.'
-      });
-    }
-
-    res.json({ ok: true, apiKeyConfigured: true, email, name, id, source });
-  } catch (err) {
-    res.status(err.status || 502).json({
-      ok: false,
-      apiKeyConfigured: true,
-      error: `Não foi possível consultar a conta do Render: ${err.message}`
-    });
   }
+
+  // 2) Sem API key: usa metadados que o próprio Render injeta no processo
+  // para identificar o repositório/commit e procurar e-mails públicos de autoria no GitHub.
+  const candidateMap = new Map();
+  const addCandidate = (email, source, details='') => {
+    email = String(email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    const noreply = /users\.noreply\.github\.com$/i.test(email) || /noreply@github\.com$/i.test(email);
+    const key = `${email}|${source}`;
+    if (!candidateMap.has(key)) candidateMap.set(key, { email, source, details, noreply });
+  };
+
+  // Procura somente variáveis cujo NOME sugere identidade/e-mail.
+  // Nunca devolve valores completos, apenas um endereço de e-mail extraído.
+  for (const [name, value] of Object.entries(process.env)) {
+    if (!/(EMAIL|MAIL|ACCOUNT|OWNER|USER)/i.test(name)) continue;
+    const m = String(value || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    if (m) addCandidate(m[0], `Variável do serviço: ${name}`);
+  }
+
+  if (repoSlug && repoSlug.includes('/')) {
+    const [owner] = repoSlug.split('/');
+    const ghHeaders = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'CarolIA-Render-Recovery' };
+
+    try {
+      const profile = await rawFetchJson(`https://api.github.com/users/${encodeURIComponent(owner)}`, { headers: ghHeaders });
+      if (profile?.email) addCandidate(profile.email, `GitHub público @${owner}`, 'E-mail público do perfil GitHub');
+      result.github.profileName = profile?.name || '';
+      result.github.profileUrl = profile?.html_url || `https://github.com/${owner}`;
+    } catch (err) {
+      result.github.profileError = err.message;
+    }
+
+    if (commitSha) {
+      try {
+        const commit = await rawFetchJson(`https://api.github.com/repos/${repoSlug}/commits/${encodeURIComponent(commitSha)}`, { headers: ghHeaders });
+        addCandidate(commit?.commit?.author?.email, 'Commit atualmente publicado', commit?.commit?.author?.name || '');
+        addCandidate(commit?.commit?.committer?.email, 'Committer atualmente publicado', commit?.commit?.committer?.name || '');
+        result.github.deployedAuthor = commit?.commit?.author?.name || '';
+        result.github.deployedLogin = commit?.author?.login || commit?.committer?.login || '';
+      } catch (err) {
+        result.github.commitError = err.message;
+      }
+    }
+
+    try {
+      const commits = await rawFetchJson(`https://api.github.com/repos/${repoSlug}/commits?per_page=100`, { headers: ghHeaders });
+      if (Array.isArray(commits)) {
+        for (const c of commits) {
+          addCandidate(c?.commit?.author?.email, 'Histórico do repositório', c?.commit?.author?.name || '');
+          addCandidate(c?.commit?.committer?.email, 'Histórico do repositório', c?.commit?.committer?.name || '');
+        }
+      }
+    } catch (err) {
+      result.github.historyError = err.message;
+    }
+  }
+
+  result.candidates = [...candidateMap.values()]
+    .sort((a,b) => Number(a.noreply) - Number(b.noreply) || a.email.localeCompare(b.email))
+    .slice(0, 30);
+
+  if (!result.direct && result.candidates.length === 0) {
+    result.warning = 'O login/e-mail privado da conta Render não é exposto ao aplicativo. Sem uma RENDER_API_KEY, só é possível recuperar pistas públicas do repositório e abrir o serviço exato pelo RENDER_SERVICE_ID.';
+  }
+
+  res.json(result);
 });
 
 app.get('/api/twitch-auth-url', panelAuth, (req, res) => {
