@@ -247,6 +247,47 @@ async function setupSeRelay() {
 }
 
 
+
+async function findRenderGoogleDeep() {
+  const out = $('renderAccountResult');
+  const btn = $('findRenderGoogleDeep');
+  if (!out) return;
+  out.textContent = 'Fazendo varredura profunda dentro do runtime do Render...';
+  out.className = 'smallpre msg';
+  if (btn) btn.disabled = true;
+  try {
+    const data = await api('/api/render-google-email-deep');
+    const lines = [];
+    lines.push('=== VARREDURA PROFUNDA DA CONTA GOOGLE ===');
+    if (data.serviceName) lines.push(`Servico Render: ${data.serviceName}`);
+    if (data.serviceId) lines.push(`Service ID: ${data.serviceId}`);
+    lines.push(`Arquivos/verificacoes processados: ${data.checkedFiles ?? 0}`);
+    lines.push('');
+    if (Array.isArray(data.emails) && data.emails.length) {
+      const unique = [];
+      const seen = new Set();
+      for (const item of data.emails) {
+        if (!seen.has(item.email)) { seen.add(item.email); unique.push(item); }
+      }
+      lines.push('CONTAS GOOGLE ENCONTRADAS NO PROPRIO RUNTIME:');
+      unique.forEach((x,i) => lines.push(`${i+1}. ${x.email}\n   origem: ${x.source}${x.detail ? ` — ${x.detail}` : ''}`));
+      lines.push('');
+      lines.push('Teste primeiro os enderecos acima no login Google do Render.');
+      out.className = 'smallpre msg ok';
+    } else {
+      lines.push('NENHUM @gmail.com ou @googlemail.com EXISTE nos dados que o servico Render consegue ler.');
+      lines.push('Isso significa que o login Google privado nao foi repassado ao processo do projeto.');
+      out.className = 'smallpre msg err';
+    }
+    out.textContent = lines.join('\n');
+  } catch (err) {
+    out.textContent = `Erro na varredura: ${err.message}`;
+    out.className = 'smallpre msg err';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function findRenderAccount() {
   const out = $('renderAccountResult');
   const openBtn = $('openRenderService');
@@ -340,6 +381,7 @@ $('simulateBtn').addEventListener('click', simulate);
 $('injectBtn').addEventListener('click', injectTest);
 $('connectTwitch').addEventListener('click', connectTwitch);
 if ($('setupSeRelay')) $('setupSeRelay').addEventListener('click', setupSeRelay);
+if ($('findRenderGoogleDeep')) $('findRenderGoogleDeep').addEventListener('click', findRenderGoogleDeep);
 if ($('findRenderAccount')) $('findRenderAccount').addEventListener('click', findRenderAccount);
 if ($('openRenderService')) $('openRenderService').addEventListener('click', () => { const u=$('openRenderService').dataset.url; if (u) window.open(u,'_blank','noopener'); });
 $('reconnectTwitch').addEventListener('click', reconnectTwitch);

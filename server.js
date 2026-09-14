@@ -1800,6 +1800,123 @@ function findFirstField(value, names, depth = 0) {
   return '';
 }
 
+
+
+// V13: varredura profunda, somente para descobrir enderecos Google que ja existam
+// no runtime do proprio Render. Nao retorna senhas, tokens nem valores completos.
+function extractGoogleEmails(value) {
+  const text = String(value || '');
+  const found = text.match(/[A-Z0-9._%+\-]+@(?:gmail\.com|googlemail\.com)/gi) || [];
+  return [...new Set(found.map(x => x.toLowerCase()))];
+}
+
+function isProbablyTextFile(name) {
+  const lower = String(name || '').toLowerCase();
+  const allowed = [
+    '.env','.txt','.json','.yaml','.yml','.md','.log','.conf','.config','.ini','.toml',
+    '.js','.cjs','.mjs','.ts','.tsx','.jsx','.html','.css','.xml','.properties','.npmrc','.gitconfig'
+  ];
+  return allowed.some(ext => lower === ext || lower.endsWith(ext));
+}
+
+async function deepFindGoogleEmails() {
+  const hits = [];
+  const seen = new Set();
+  const add = (email, source, detail='') => {
+    email = String(email || '').toLowerCase();
+    if (!email || seen.has(`${email}|${source}|${detail}`)) return;
+    seen.add(`${email}|${source}|${detail}`);
+    hits.push({ email, source, detail });
+  };
+
+  // 1) Tudo que o Render disponibilizou ao processo, incluindo variaveis internas.
+  for (const [key, value] of Object.entries(process.env)) {
+    for (const email of extractGoogleEmails(value)) add(email, 'Variavel do runtime', key);
+  }
+
+  // 2) Argumentos do processo e metadados do Node.
+  for (const email of extractGoogleEmails(process.argv.join(' '))) add(email, 'Processo Node', 'argv');
+  try {
+    for (const email of extractGoogleEmails(JSON.stringify(process.report?.getReport?.() || {}))) {
+      add(email, 'Relatorio do processo', 'process.report');
+    }
+  } catch {}
+
+  // 3) Arquivos pequenos de configuracao/metadados acessiveis no container.
+  const roots = [
+    ROOT,
+    '/opt/render/project',
+    '/etc',
+    '/root',
+    '/home'
+  ];
+  const skipNames = new Set(['node_modules','.cache','.npm','tts','models','model','proc','sys','dev']);
+  let checked = 0;
+  const maxFiles = 2500;
+  const maxDepth = 5;
+  const maxBytes = 1024 * 1024;
+
+  const walk = (dir, depth) => {
+    if (checked >= maxFiles || depth > maxDepth) return;
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const ent of entries) {
+      if (checked >= maxFiles) break;
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        if (!skipNames.has(ent.name) && !ent.name.startsWith('node_modules')) walk(full, depth + 1);
+        continue;
+      }
+      if (!ent.isFile()) continue;
+      checked++;
+      if (!isProbablyTextFile(ent.name) && !/^\.?env/i.test(ent.name) && !/profile|account|user|render|auth|credential|identity|config/i.test(ent.name)) continue;
+      try {
+        const st = fs.statSync(full);
+        if (st.size <= 0 || st.size > maxBytes) continue;
+        const buf = fs.readFileSync(full);
+        if (buf.includes(0)) continue;
+        const text = buf.toString('utf8');
+        for (const email of extractGoogleEmails(text)) add(email, 'Arquivo do runtime', full);
+      } catch {}
+    }
+  };
+  for (const root of roots) walk(root, 0);
+
+  // 4) Alguns arquivos comuns que podem existir fora da arvore acima.
+  const directFiles = [
+    '/root/.gitconfig','/root/.npmrc','/etc/environment','/etc/profile',
+    '/opt/render/project/src/.env','/opt/render/project/src/.env.production'
+  ];
+  for (const file of directFiles) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      const st = fs.statSync(file);
+      if (!st.isFile() || st.size > maxBytes) continue;
+      const text = fs.readFileSync(file, 'utf8');
+      for (const email of extractGoogleEmails(text)) add(email, 'Arquivo do runtime', file);
+    } catch {}
+  }
+
+  return {
+    checkedFiles: checked,
+    emails: hits.slice(0, 100),
+    found: hits.length > 0,
+    serviceId: String(process.env.RENDER_SERVICE_ID || ''),
+    serviceName: String(process.env.RENDER_SERVICE_NAME || ''),
+    hostname: String(process.env.RENDER_EXTERNAL_HOSTNAME || '')
+  };
+}
+
+
+app.get('/api/render-google-email-deep', panelAuth, async (_req, res) => {
+  try {
+    const result = await deepFindGoogleEmails();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Falha na varredura profunda.' });
+  }
+});
+
 app.get('/api/render-account', panelAuth, async (_req, res) => {
   const repoSlug = String(process.env.RENDER_GIT_REPO_SLUG || '').trim();
   const commitSha = String(process.env.RENDER_GIT_COMMIT || '').trim();
