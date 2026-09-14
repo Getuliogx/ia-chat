@@ -1,4 +1,4 @@
-# CarolIA com corpo + voz na live
+# CarolIA com avatar animado + voz na live
 
 Esta versão adiciona um avatar de corpo inteiro e voz TTS ao projeto original.
 
@@ -8,13 +8,13 @@ Esta versão adiciona um avatar de corpo inteiro e voz TTS ao projeto original.
 2. Quando `icarolzinhabot` (ou `streamelements`, se o Custom Bot Name não estiver ativo) publica a resposta, o EventSub vê essa mensagem.
 3. O servidor reconhece que a mensagem chegou logo depois de um prompt da IA.
 4. O servidor gera um MP3 com voz neural em português do Brasil.
-5. A página `/avatar.html` recebe a resposta em tempo real, anima o corpo e toca o MP3, sem legenda.
+5. A página `/avatar.html` recebe a resposta em tempo real, anima o corpo e toca o MP3, sem sem legenda.
 
 ## No Render
 
 O `render.yaml` já cria `OVERLAY_KEY`. Em instalação antiga, o projeto também aceita `TIMER_KEY` como chave do avatar se `OVERLAY_KEY` não existir.
 
-Depois do deploy, abra o painel. A seção **Avatar da IA — corpo + voz** mostra a URL completa e protegida da fonte.
+Depois do deploy, abra o painel. A seção **Avatar da IA — avatar animado + voz** mostra a URL completa e protegida da fonte.
 
 ## Colocar na live
 
@@ -39,7 +39,7 @@ Os campos do painel permitem mudar voz, velocidade, tom e volume. A síntese é 
 
 1. Abra a URL do avatar em outra aba ou na Browser Source.
 2. No painel, escreva um texto em **Texto de teste**.
-3. Clique **Testar corpo + voz agora**.
+3. Clique **Testar avatar animado + voz agora**.
 4. O contador **Overlays conectados** deve ser maior que zero.
 
 ## Observação importante

@@ -1,8 +1,8 @@
 {
   "name": "carolia-icarolinaporto-sem-obs",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "private": true,
-  "description": "CarolIA: Twitch EventSub + StreamElements AI + avatar de corpo inteiro e voz TTS para a live.",
+  "description": "CarolIA: Twitch EventSub + StreamElements AI + avatar animado com voz TTS feminina, sem legenda e pronto para 1 link no OBS.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

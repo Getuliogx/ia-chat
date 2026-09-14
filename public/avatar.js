@@ -1,3 +1,4 @@
+
 'use strict';
 
 const $ = id => document.getElementById(id);
@@ -8,6 +9,11 @@ const voice = $('voice');
 const queue = [];
 let busy = false;
 let cfg = { aiName:'CarolIA', avatarEnabled:true, avatarImageUrl:'', ttsEnabled:true };
+let audioCtx = null;
+let analyser = null;
+let sourceNode = null;
+let rafId = 0;
+let fallbackTimer = 0;
 
 function applyAvatar() {
   const custom = $('customAvatar');
@@ -37,27 +43,109 @@ async function loadConfig() {
 
 function setSpeaking(active) {
   stage.classList.toggle('speaking', active);
+  if (!active) setTalkLevel(0);
+}
+
+function setTalkLevel(value) {
+  const v = Math.max(0, Math.min(1, Number(value) || 0));
+  stage.style.setProperty('--talk', v.toFixed(3));
+}
+
+function stopVisualizers() {
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = 0;
+  if (fallbackTimer) clearInterval(fallbackTimer);
+  fallbackTimer = 0;
+  setTalkLevel(0);
+}
+
+function ensureAnalyser() {
+  if (analyser) return true;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return false;
+  try {
+    audioCtx = new AC();
+    sourceNode = audioCtx.createMediaElementSource(voice);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.72;
+    sourceNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    return true;
+  } catch (err) {
+    console.warn('[CarolIA avatar] analisador não disponível:', err.message);
+    analyser = null;
+    return false;
+  }
+}
+
+function startAudioReactiveMotion() {
+  stopVisualizers();
+  if (!ensureAnalyser()) return;
+  const bins = new Uint8Array(analyser.frequencyBinCount);
+  const tick = () => {
+    if (!busy) {
+      setTalkLevel(0);
+      return;
+    }
+    try {
+      analyser.getByteFrequencyData(bins);
+      let sum = 0;
+      for (let i = 0; i < bins.length; i += 1) sum += bins[i];
+      const avg = sum / (bins.length || 1);
+      const talk = Math.max(0.04, Math.min(1, avg / 72));
+      setTalkLevel(talk);
+    } catch {
+      setTalkLevel(0.2);
+    }
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function startFallbackMotion(durationMs) {
+  stopVisualizers();
+  const stopAt = Date.now() + Math.max(900, durationMs || 2000);
+  fallbackTimer = setInterval(() => {
+    if (!busy || Date.now() >= stopAt) {
+      clearInterval(fallbackTimer);
+      fallbackTimer = 0;
+      setTalkLevel(0);
+      return;
+    }
+    setTalkLevel(0.18 + Math.random() * 0.48);
+  }, 85);
 }
 
 function waitForText(text) {
-  return new Promise(resolve => setTimeout(resolve, Math.min(6500, Math.max(1300, String(text || '').length * 42))));
+  const ms = Math.min(6500, Math.max(1300, String(text || '').length * 42));
+  startFallbackMotion(ms);
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function playServerAudio(item) {
   if (!item.audioUrl || item.ttsEnabled === false) return false;
   try {
+    ensureAnalyser();
+    if (audioCtx?.state === 'suspended') {
+      try { await audioCtx.resume(); } catch {}
+    }
     await new Promise((resolve, reject) => {
-      const done = () => { cleanup(); resolve(); };
-      const fail = () => { cleanup(); reject(new Error('Falha ao reproduzir o TTS feminino')); };
+      const done = () => { cleanup(); stopVisualizers(); resolve(); };
+      const fail = () => { cleanup(); stopVisualizers(); reject(new Error('Falha ao reproduzir o TTS feminino')); };
       const cleanup = () => {
         voice.removeEventListener('ended', done);
         voice.removeEventListener('error', fail);
+        voice.removeEventListener('playing', onPlaying);
       };
+      const onPlaying = () => startAudioReactiveMotion();
       voice.addEventListener('ended', done, {once:true});
       voice.addEventListener('error', fail, {once:true});
-      voice.src = item.audioUrl;
+      voice.addEventListener('playing', onPlaying, {once:true});
+      voice.src = `${item.audioUrl}${item.audioUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
       voice.volume = 1;
-      voice.play().catch(fail);
+      const result = voice.play();
+      if (result && typeof result.catch === 'function') result.catch(fail);
     });
     return true;
   } catch (err) {
@@ -80,6 +168,7 @@ async function playItem(item) {
   const played = await playServerAudio(item);
   if (!played) await waitForText(item.text);
 
+  stopVisualizers();
   setSpeaking(false);
   busy = false;
   runQueue();
@@ -89,6 +178,7 @@ function runQueue() {
   if (busy || !queue.length) return;
   const next = queue.shift();
   playItem(next).catch(() => {
+    stopVisualizers();
     busy = false;
     setSpeaking(false);
     runQueue();
@@ -115,6 +205,7 @@ async function start() {
 }
 
 window.addEventListener('beforeunload', () => {
+  stopVisualizers();
   try { voice.pause(); } catch {}
 });
 

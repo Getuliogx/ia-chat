@@ -95,12 +95,12 @@ No painel:
 
 ## 8. Corpo + voz na live
 
-Depois do deploy, abra o painel e procure **Avatar da IA — corpo + voz**.
+Depois do deploy, abra o painel e procure **Avatar da IA — avatar animado + voz**.
 
 1. Abra/copie a **URL do Avatar**.
 2. Adicione como Browser Source (sugestão 900 × 1200).
 3. Deixe o áudio da fonte habilitado.
-4. Clique em **Testar corpo + voz agora** no painel.
+4. Clique em **Testar avatar animado + voz agora** no painel.
 5. Se quiser seu próprio personagem, informe uma URL de PNG/WebP transparente em **Imagem personalizada do corpo**.
 
 A voz padrão é `pt-BR-FranciscaNeural` (feminina). O servidor aceita somente vozes femininas PT-BR configuradas no painel.

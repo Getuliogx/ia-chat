@@ -2,7 +2,7 @@
 
 Esta versão corrige dois pontos do overlay:
 
-- Remove totalmente a legenda/balão da página `avatar.html`.
+- Remove totalmente a sem legenda/balão da página `avatar.html`.
 - Remove o fallback genérico do `speechSynthesis` do navegador, que podia escolher a primeira voz `pt-BR` instalada e acabar usando uma voz masculina.
 - O servidor agora aceita apenas uma lista de vozes femininas PT-BR e volta para `pt-BR-FranciscaNeural` se houver uma configuração antiga/inválida.
 - Troca o avatar padrão por uma personagem de corpo inteiro com fundo transparente e animação leve de corpo durante a fala.

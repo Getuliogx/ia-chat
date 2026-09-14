@@ -1,4 +1,4 @@
-# CarolIA 5.0 — corpo + voz na live
+# CarolIA 5.0 — avatar animado + voz na live
 
 Esta versão mantém o fluxo original Twitch → Render → StreamElements `$(ai)` e adiciona uma saída visual em tempo real:
 
