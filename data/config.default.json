@@ -69,5 +69,11 @@
   "ttsRate": 0,
   "ttsPitch": 0,
   "ttsVolume": 0,
-  "botResponseWindowSeconds": 120
+  "botResponseWindowSeconds": 120,
+  "localAiEnabled": true,
+  "localAiMentionOnly": true,
+  "localAiPort": 11435,
+  "localAiMaxTokens": 96,
+  "localAiTemperature": 78,
+  "localAiTimeoutSeconds": 60
 }

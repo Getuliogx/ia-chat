@@ -251,6 +251,7 @@ function enqueue(item) {
 async function start() {
   try {
     await loadConfig();
+    startLocalAiWorker();
     const es = new EventSource(`/api/overlay-events?key=${encodeURIComponent(key)}`);
     es.addEventListener('reply', ev => {
       try { enqueue(JSON.parse(ev.data)); } catch {}
@@ -262,9 +263,135 @@ async function start() {
 }
 
 window.addEventListener('beforeunload', () => {
+  if (localAiLoopTimer) clearInterval(localAiLoopTimer);
   stopMotion();
   try { voice.pause(); } catch {}
   revokeBlob();
 });
 
 start();
+
+// ---------------- V10: IA local leve (Qwen 0.6B) ----------------
+const localWorkerId = (globalThis.crypto?.randomUUID?.() || `worker-${Date.now()}-${Math.random()}`).slice(0, 80);
+let localAiLoopTimer = 0;
+let localAiRunning = false;
+let localModelId = '';
+let lastLocalHeartbeat = 0;
+
+function localFetch(url, options = {}) {
+  // targetAddressSpace é entendido por Chromium recente e ignorado por CEF antigo.
+  return fetch(url, { ...options, targetAddressSpace: 'loopback' });
+}
+
+async function discoverLocalModel() {
+  const base = String(cfg.localAiUrl || 'http://127.0.0.1:11435').replace(/\/$/, '');
+  const r = await localFetch(`${base}/v1/models`, { cache:'no-store' });
+  if (!r.ok) throw new Error(`llama.cpp HTTP ${r.status}`);
+  const data = await r.json();
+  localModelId = String(data?.data?.[0]?.id || data?.models?.[0]?.id || 'local');
+  return localModelId;
+}
+
+async function reportLocalAi(ok, error = '') {
+  const now = Date.now();
+  if (now - lastLocalHeartbeat < 5000 && ok) return;
+  lastLocalHeartbeat = now;
+  try {
+    await fetch(`/api/local-ai/heartbeat?key=${encodeURIComponent(key)}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ workerId:localWorkerId, ok, model:localModelId, error:String(error || '') })
+    });
+  } catch {}
+}
+
+async function callLocalAi(task) {
+  const base = String(cfg.localAiUrl || 'http://127.0.0.1:11435').replace(/\/$/, '');
+  if (!localModelId) await discoverLocalModel();
+  const controller = new AbortController();
+  const timeoutMs = Math.max(15000, Number(cfg.localAiTimeoutSeconds || 60) * 1000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const r = await localFetch(`${base}/v1/chat/completions`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      signal:controller.signal,
+      body:JSON.stringify({
+        model:localModelId || 'local',
+        messages:Array.isArray(task.messages) ? task.messages : [],
+        temperature:Number(task.temperature || 0.8),
+        top_p:0.9,
+        top_k:30,
+        max_tokens:Number(task.maxTokens || 96),
+        stream:false,
+        cache_prompt:true,
+        reasoning_effort:'none',
+        chat_template_kwargs:{ enable_thinking:false }
+      })
+    });
+    if (!r.ok) throw new Error(`llama.cpp respondeu HTTP ${r.status}: ${(await r.text()).slice(0,180)}`);
+    const data = await r.json();
+    let reply = String(data?.choices?.[0]?.message?.content || data?.content || '').trim();
+    reply = reply.replace(/<think>[\s\S]*?<\/think>/gi,' ').replace(/<think>[\s\S]*$/gi,' ').replace(/\s+/g,' ').trim();
+    if (!reply) throw new Error('Qwen local devolveu resposta vazia.');
+    return reply;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function claimLocalTask() {
+  const r = await fetch(`/api/local-ai/claim?key=${encodeURIComponent(key)}&worker=${encodeURIComponent(localWorkerId)}`, {cache:'no-store'});
+  if (!r.ok) throw new Error(`Render claim HTTP ${r.status}`);
+  const data = await r.json();
+  return data?.task || null;
+}
+
+async function releaseLocalTask(id) {
+  try {
+    await fetch(`/api/local-ai/release?key=${encodeURIComponent(key)}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id, worker:localWorkerId})
+    });
+  } catch {}
+}
+
+async function submitLocalResult(id, reply) {
+  const r = await fetch(`/api/local-ai/result?key=${encodeURIComponent(key)}`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id, reply})
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `Render result HTTP ${r.status}`);
+  return data;
+}
+
+async function localAiTick() {
+  if (localAiRunning || cfg.localAiEnabled === false || !key) return;
+  localAiRunning = true;
+  let task = null;
+  try {
+    if (!localModelId) await discoverLocalModel();
+    await reportLocalAi(true, '');
+    task = await claimLocalTask();
+    if (!task) return;
+    const reply = await callLocalAi(task);
+    await submitLocalResult(task.id, reply);
+    await reportLocalAi(true, '');
+  } catch (err) {
+    const message = err?.name === 'AbortError' ? 'IA local demorou demais e foi interrompida.' : String(err?.message || err);
+    console.error('[CarolIA IA local]', message);
+    if (task?.id) await releaseLocalTask(task.id);
+    localModelId = '';
+    await reportLocalAi(false, message);
+  } finally {
+    localAiRunning = false;
+  }
+}
+
+function startLocalAiWorker() {
+  if (localAiLoopTimer) clearInterval(localAiLoopTimer);
+  if (cfg.localAiEnabled === false) return;
+  localAiTick();
+  localAiLoopTimer = setInterval(localAiTick, 1400);
+}

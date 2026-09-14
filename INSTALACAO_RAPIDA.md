@@ -1,106 +1,35 @@
-# INSTALAÇÃO RÁPIDA — CarolIA / icarolinaporto
+# INSTALAÇÃO RÁPIDA — CarolIA V10
 
-A leitura e a IA continuam **sem depender do OBS**. Para o novo corpo aparecer dentro do vídeo da live, use a URL de avatar como Browser Source no software/overlay que compõe a transmissão.
+## 1. GitHub / Render
 
-- Canal lido: `icarolinaporto`
-- Conta que autoriza a leitura: **a SUA conta Twitch (MOD do canal)**
-- Conta que deve aparecer respondendo: `icarolzinhabot`, **se ela já estiver configurada como Custom Bot Name no StreamElements**
-- IA: `$(ai)` nativa do StreamElements
-- Hospedagem: Render
-- Código: GitHub
+Substitua os arquivos do projeto atual pelos arquivos desta pasta e faça o deploy no Render.
 
-## 1. Coloque esta pasta no GitHub
+O Timer do StreamElements continua sendo o mesmo campo exibido pelo painel. Mensagens normais continuam usando o Timer de 1 minuto.
 
-Crie um repositório e envie todos os arquivos desta pasta. Não envie `.env`, tokens ou senhas.
-
-## 2. Crie o serviço no Render
-
-No Render, crie um Blueprint usando o repositório. O `render.yaml` cria o Web Service.
-
-No primeiro Blueprint, você só precisa informar:
-
-- `PANEL_KEY`: uma senha forte para o painel
-
-`TIMER_KEY` é gerada automaticamente. As credenciais da Twitch são adicionadas **depois do primeiro deploy**, quando o painel já consegue mostrar a Callback URL exata.
-
-## 3. Descubra a Callback URL
-
-Abra o endereço do Render e entre com `PANEL_KEY`.
-
-No painel, copie **Callback URL**, parecida com:
-
-`https://carolia-icarolinaporto.onrender.com/auth/twitch/callback`
-
-## 4. Crie uma aplicação Twitch
-
-No Twitch Developer Console, crie uma aplicação e cadastre exatamente a Callback URL copiada acima como OAuth Redirect URL.
-
-Copie o Client ID e gere/copiei o Client Secret.
-
-No Render, adicione manualmente em Environment:
-
-- `TWITCH_CLIENT_ID`
-- `TWITCH_CLIENT_SECRET`
-
-Opcional, mas recomendado para manter automaticamente o token da Twitch atualizado entre futuros redeploys:
-
-- `RENDER_API_KEY` — crie uma API Key na sua própria conta Render. O `RENDER_SERVICE_ID` já existe automaticamente no serviço.
-
-Faça um redeploy.
-
-## 5. Autorize A SUA Twitch
-
-Abra o painel CarolIA e clique em **Conectar minha Twitch (MOD)**.
-
-Entre com **a sua própria conta Twitch**, a conta que é moderadora de `icarolinaporto`.
-
-A amiga não precisa autorizar a conta dela.
-
-Se `RENDER_API_KEY` estiver configurada, o sistema grava/atualiza `TWITCH_REFRESH_TOKEN` automaticamente no Environment do próprio serviço.
-
-Sem `RENDER_API_KEY`, a tela mostrará o Refresh Token para você copiar manualmente para `TWITCH_REFRESH_TOKEN` no Render.
-
-**Nunca coloque Refresh Token nem Render API Key no GitHub.**
-
-## 6. Configure o Timer no StreamElements
-
-Entre no StreamElements do canal como Editor e abra Chatbot > Timers.
-
-Crie um Timer e cole em **Response messages** a linha gerada pelo painel CarolIA.
-
-Use:
-
-- Online interval: `1 minuto`
-- Chat lines: `1`
-- Timer ativado
-
-Não existe comando para os viewers.
-
-## 7. icarolzinhabot
-
-Se `icarolzinhabot` **já estiver conectado** no StreamElements como Custom Bot Name do canal, os Timers/respostas do chatbot devem sair por ele.
-
-Se não estiver conectado, este projeto não pode fingir ser essa conta. Nesse caso, o StreamElements responderá com a identidade atualmente configurada no chatbot.
-
-## Teste
+## 2. Twitch
 
 No painel:
 
-1. Escolha `Sensual`, `Safadinha`, `Zueira`, etc.
-2. Clique em **Salvar configurações**.
-3. Use **Simular prompt** para conferir a personalidade sem gastar IA.
-4. Use **Colocar teste na fila** para testar o fluxo do próximo Timer.
+- mantenha a conta que lê o chat conectada;
+- clique em **Conectar icarolzinhabot para responder** e faça login na conta Twitch que deve publicar as respostas imediatas.
 
+As duas autorizações usam a mesma Callback URL já cadastrada no Twitch Developer Console.
 
+## 3. Notebook
 
-## 8. Corpo + voz na live
+Abra:
 
-Depois do deploy, abra o painel e procure **Avatar da IA — avatar animado + voz**.
+`PC_LOCAL\INICIAR_CAROLIA_LOCAL.cmd`
 
-1. Abra/copie a **URL do Avatar**.
-2. Adicione como Browser Source (sugestão 900 × 1200).
-3. Deixe o áudio da fonte habilitado.
-4. Clique em **Testar avatar animado + voz agora** no painel.
-5. Se quiser seu próprio personagem, informe uma URL de PNG/WebP transparente em **Imagem personalizada do corpo**.
+Na primeira vez ele baixa automaticamente llama.cpp + Qwen3 0.6B Q4_K_M. Não usa Ollama.
 
-A voz padrão é `pt-BR-FranciscaNeural` (feminina). O servidor aceita somente vozes femininas PT-BR configuradas no painel.
+## 4. OBS
+
+Continue usando **um único link**, a URL do avatar mostrada pelo painel. Nessa Browser Source marque **Controlar áudio via OBS**.
+
+## Resultado
+
+- mensagem normal → Timer StreamElements de 1 minuto;
+- `@icarolzinhabot` / `@CarolIA` → Qwen local imediatamente, fora do Timer;
+- resposta local → Twitch + voz feminina + avatar;
+- todos os sliders de emoção/personalidade entram no prompt local.

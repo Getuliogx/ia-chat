@@ -10,9 +10,9 @@
   <main class="wrap">
     <header>
       <div>
-        <div class="eyebrow">TWITCH EVENTSUB • RENDER • STREAMELEMENTS $(ai)</div>
+        <div class="eyebrow">TWITCH EVENTSUB • RENDER • IA LOCAL + STREAMELEMENTS</div>
         <h1>CarolIA <span>icarolinaporto</span></h1>
-        <p>Sem OBS. Seu login de MOD lê o chat; o StreamElements gera a IA e publica pelo bot configurado no canal.</p>
+        <p>O Timer continua para mensagens normais; @menções vão direto para a IA local leve no seu PC, sem esperar 1 minuto.</p>
       </div>
       <div class="status-card">
         <span id="dot" class="dot"></span>
@@ -123,8 +123,8 @@
         </article>
 
         <article class="card">
-          <h2>2. StreamElements — resposta da IA</h2>
-          <p><b>IMPORTANTE V9:</b> substitua a linha antiga do Timer por esta. A resposta do $(ai) passa por /say, que dispara a voz e devolve o mesmo texto para o chat:</p>
+          <h2>2. StreamElements — Timer das mensagens normais</h2>
+          <p>O Timer de 1 minuto continua funcionando para mensagens normais. <b>As @menções da CarolIA não entram nesta fila</b> quando a IA local está ativada.</p>
           <textarea id="timerLine" rows="5" readonly></textarea>
           <button data-copy="timerLine">Copiar Timer</button>
           <div class="callout">
@@ -133,14 +133,46 @@
             <div>Chat lines: <b>1</b></div>
           </div>
           <p>Saída esperada: <b id="expectedBot">icarolzinhabot</b>. Isso acontece se essa conta já estiver ativa em <b>Custom Bot Name</b> no StreamElements do canal. Caso contrário, a resposta sai como StreamElements.</p>
-          <p class="hint">O Timer do StreamElements trabalha em minutos; por isso esta solução sem comando e sem credencial do StreamElements responde no máximo na frequência do Timer.</p>
+          <p class="hint">Mensagens normais usam o Timer. @menções usam o Qwen local e respondem assim que o notebook terminar de gerar a frase.</p>
         </article>
       </section>
 
+      <section class="grid">
+        <article class="card">
+          <h2>3. IA local leve — @menções sem Timer</h2>
+          <p>Quando alguém menciona <b>@icarolzinhabot</b> ou <b>@CarolIA</b>, a mensagem vai direto para o Qwen local do seu PC. Ela não entra no Timer de 1 minuto.</p>
+          <label class="check"><input id="localAiEnabled" type="checkbox"> Ativar IA local para respostas imediatas</label>
+          <label class="check"><input id="localAiMentionOnly" type="checkbox"> Usar IA local somente em @menções</label>
+          <div class="two">
+            <label>Porta local<input id="localAiPort" type="number" min="1024" max="65535"></label>
+            <label>Máx. tokens da resposta<input id="localAiMaxTokens" type="number" min="32" max="160"></label>
+          </div>
+          <div class="two">
+            <label>Criatividade 0–100<input id="localAiTemperature" type="number" min="0" max="100"></label>
+            <label>Timeout (seg)<input id="localAiTimeoutSeconds" type="number" min="15" max="180"></label>
+          </div>
+          <div class="connection-box">
+            <div><span class="mini-dot" id="localAiMiniDot"></span><strong id="localAiStatus">IA local aguardando</strong></div>
+            <small id="localAiDetail">Abra o avatar no OBS e execute INICIAR_CAROLIA_LOCAL.cmd no PC.</small>
+          </div>
+          <p class="hint">O pacote do PC baixa automaticamente o llama.cpp e o Qwen3 0.6B Q4 na primeira execução. Depois o llama-server fica rodando em segundo plano durante a live; o iniciador pode fechar.</p>
+        </article>
+
+        <article class="card">
+          <h2>Conta Twitch que envia a resposta imediata</h2>
+          <div class="connection-box">
+            <div><span class="mini-dot" id="botMiniDot"></span><strong id="botIdentity">Não conectada</strong></div>
+            <small id="botDetail">As respostas locais precisam de uma conta Twitch para escrever no chat.</small>
+          </div>
+          <p>Entre com a conta <b>icarolzinhabot</b>. Ela recebe somente a permissão <code>user:write:chat</code> e é usada para publicar a resposta gerada no seu notebook.</p>
+          <button id="connectBotTwitch" class="primary">Conectar icarolzinhabot para responder</button>
+          <p class="hint">A mesma Callback URL da seção Twitch é usada; não é necessário cadastrar uma segunda callback no Twitch Developer Console.</p>
+        </article>
+      </section>
 
       <section class="grid">
         <article class="card">
-          <h2>3. Avatar da IA — corpo + voz feminina</h2>
+          <h2>4. Avatar da IA — corpo + voz feminina</h2>
           <p>A resposta da IA passa primeiro pelo servidor de voz e depois o mesmo texto é devolvido ao StreamElements para aparecer no chat. Assim texto e fala usam a mesma resposta. Não exibe legenda.</p>
           <label class="check"><input id="avatarEnabled" type="checkbox"> Mostrar corpo/avatar</label>
           <label class="check"><input id="ttsEnabled" type="checkbox"> Ativar voz TTS</label>
@@ -209,9 +241,13 @@
             <div><span>Overlays conectados</span><b id="overlayClients">0</b></div>
             <div><span>MP3 TTS gerados</span><b id="ttsGenerated">0</b></div>
             <div><span>Falhas TTS</span><b id="ttsFailures">0</b></div>
+            <div><span>IA local na fila</span><b id="localAiPending">0</b></div>
+            <div><span>IA local respondidas</span><b id="localAiProcessed">0</b></div>
           </div>
           <label>Último erro Twitch</label>
           <pre id="lastError" class="smallpre">Nenhum.</pre>
+          <label>Último erro IA local</label>
+          <pre id="lastLocalAiError" class="smallpre">Nenhum.</pre>
           <a id="exportConfig" class="button-link" href="#">Exportar configuração JSON</a>
         </article>
       </section>

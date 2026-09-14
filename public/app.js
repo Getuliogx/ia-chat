@@ -62,7 +62,8 @@ function fill(c) {
     'enabled','aiName','responseLength','profanity','adultFlirt','mentionUser','answerChance',
     'cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ignoreCommands',
     'ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','customPersonality',
-    'avatarEnabled','avatarImageUrl','ttsEnabled','ttsVoice','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds'
+    'avatarEnabled','avatarImageUrl','ttsEnabled','ttsVoice','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds',
+    'localAiEnabled','localAiMentionOnly','localAiPort','localAiMaxTokens','localAiTemperature','localAiTimeoutSeconds'
   ];
   for (const id of ids) {
     const el = $(id); if (!el) continue;
@@ -78,10 +79,10 @@ function fill(c) {
 
 function collect() {
   const out = { ...cfg };
-  ['enabled','adultFlirt','mentionUser','ignoreCommands','ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','avatarEnabled','ttsEnabled']
+  ['enabled','adultFlirt','mentionUser','ignoreCommands','ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','avatarEnabled','ttsEnabled','localAiEnabled','localAiMentionOnly']
     .forEach(id => out[id] = $(id).checked);
   ['aiName','responseLength','customPersonality','avatarImageUrl','ttsVoice'].forEach(id => out[id] = $(id).value);
-  ['profanity','answerChance','cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds']
+  ['profanity','answerChance','cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds','localAiPort','localAiMaxTokens','localAiTemperature','localAiTimeoutSeconds']
     .forEach(id => out[id] = Number($(id).value));
   sliderDefs.forEach(([id]) => out[id] = Number($(id).value));
   out.ignoreUsers = $('ignoreUsers').value.split(/\n|,/).map(s => s.trim()).filter(Boolean);
@@ -157,6 +158,21 @@ async function refreshStatus() {
     $('promptsServed').textContent = s.promptsServed;
     $('spokenReplies').textContent = s.spokenReplies || 0;
     $('overlayClients').textContent = s.overlayClients || 0;
+    if ($('localAiPending')) $('localAiPending').textContent = s.localAiPending || 0;
+    if ($('localAiProcessed')) $('localAiProcessed').textContent = s.localAiProcessed || 0;
+    const localOnline = Boolean(s.localAiWorker?.online && s.localAiWorker?.ok);
+    if ($('localAiMiniDot')) $('localAiMiniDot').classList.toggle('on', localOnline);
+    if ($('localAiStatus')) $('localAiStatus').textContent = localOnline ? 'IA local conectada ao Qwen' : 'IA local offline/aguardando';
+    if ($('localAiDetail')) $('localAiDetail').textContent = localOnline
+      ? `${s.localAiWorker?.model || 'Qwen local'} • ${s.localAiPending || 0} aguardando`
+      : (s.localAiWorker?.error || 'Abra o avatar no OBS e execute INICIAR_CAROLIA_LOCAL.cmd.');
+    if ($('lastLocalAiError')) $('lastLocalAiError').textContent = s.localAiWorker?.error || s.bot?.lastError || 'Nenhum.';
+    const botConnected = Boolean(s.bot?.connected && s.bot?.displayName);
+    if ($('botMiniDot')) $('botMiniDot').classList.toggle('on', botConnected);
+    if ($('botIdentity')) $('botIdentity').textContent = botConnected ? `${s.bot.displayName} pronta para responder` : 'Conta que responde não conectada';
+    if ($('botDetail')) $('botDetail').textContent = botConnected
+      ? `Twitch ID ${s.bot.userId || ''} • ${s.bot.refreshTokenPersistence || 'token carregado'}`
+      : (s.bot?.lastError || 'Conecte icarolzinhabot para publicar as respostas da IA local.');
     if ($('ttsGenerated')) $('ttsGenerated').textContent = s.ttsGenerated || 0;
     if ($('ttsFailures')) $('ttsFailures').textContent = s.ttsFailures || 0;
     if ($('lastTtsError')) $('lastTtsError').textContent = s.lastTtsError || 'Nenhum.';
@@ -222,6 +238,13 @@ async function connectTwitch() {
   } catch (e) { alert(e.message); }
 }
 
+async function connectBotTwitch() {
+  try {
+    const data = await api('/api/twitch-auth-url?role=bot');
+    window.location.href = data.url;
+  } catch (e) { alert(e.message); }
+}
+
 async function reconnectTwitch() {
   try {
     await api('/api/reconnect-twitch', {method:'POST'});
@@ -247,6 +270,7 @@ document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click'
 $('simulateBtn').addEventListener('click', simulate);
 $('injectBtn').addEventListener('click', injectTest);
 $('connectTwitch').addEventListener('click', connectTwitch);
+if ($('connectBotTwitch')) $('connectBotTwitch').addEventListener('click', connectBotTwitch);
 $('reconnectTwitch').addEventListener('click', reconnectTwitch);
 $('testAvatar').addEventListener('click', testAvatar);
 $('openOverlay').addEventListener('click', () => {

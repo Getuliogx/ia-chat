@@ -13,6 +13,7 @@ const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, 'data');
 const STATE_FILE = path.join(DATA_DIR, 'state.json');
 const TWITCH_SESSION_FILE = path.join(DATA_DIR, 'twitch.session.json');
+const BOT_TWITCH_SESSION_FILE = path.join(DATA_DIR, 'twitch.bot.session.json');
 const DEFAULT_CONFIG_FILE = path.join(DATA_DIR, 'config.default.json');
 const PORT = Number(process.env.PORT || 8080);
 const CHANNEL_NAME = String(process.env.CHANNEL_NAME || 'icarolinaporto').trim().toLowerCase();
@@ -23,6 +24,7 @@ const OVERLAY_KEY = String(process.env.OVERLAY_KEY || TIMER_KEY || '').trim();
 const TWITCH_CLIENT_ID = String(process.env.TWITCH_CLIENT_ID || '').trim();
 const TWITCH_CLIENT_SECRET = String(process.env.TWITCH_CLIENT_SECRET || '').trim();
 const ENV_REFRESH_TOKEN = String(process.env.TWITCH_REFRESH_TOKEN || '').trim();
+const ENV_BOT_REFRESH_TOKEN = String(process.env.BOT_TWITCH_REFRESH_TOKEN || '').trim();
 const PUBLIC_BASE_URL = String(process.env.PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
 const RENDER_API_KEY = String(process.env.RENDER_API_KEY || '').trim();
 const RENDER_SERVICE_ID = String(process.env.RENDER_SERVICE_ID || '').trim();
@@ -300,6 +302,19 @@ const runtime = {
   lastAiDispatchAt: 0,
   awaitingBotResponseUntil: 0,
   lastSpokenReply: null,
+  localAiQueued: 0,
+  localAiProcessed: 0,
+  localAiFailures: 0,
+  localAiPending: [],
+  localAiWorker: { lastSeenAt: 0, ok: false, model: '', error: 'Aguardando o avatar/OBS conectar.' },
+  bot: {
+    connected: false,
+    userId: null,
+    login: null,
+    displayName: null,
+    lastError: null,
+    refreshTokenPersistence: RENDER_API_KEY && RENDER_SERVICE_ID ? 'Render API' : 'manual'
+  },
   twitch: {
     status: 'desconectado',
     lastError: null,
@@ -346,6 +361,15 @@ const tokenState = {
   displayName: ''
 };
 
+const botTokenState = {
+  accessToken: '',
+  refreshToken: '',
+  expiresAt: 0,
+  userId: '',
+  login: '',
+  displayName: ''
+};
+
 let eventSubSocket = null;
 let reconnectTimer = null;
 let keepaliveTimer = null;
@@ -362,6 +386,16 @@ function persistTwitchSession() {
     userId: tokenState.userId,
     login: tokenState.login,
     displayName: tokenState.displayName
+  });
+}
+
+function persistBotTwitchSession() {
+  if (!botTokenState.refreshToken) return;
+  safeWriteJson(BOT_TWITCH_SESSION_FILE, {
+    refreshToken: botTokenState.refreshToken,
+    userId: botTokenState.userId,
+    login: botTokenState.login,
+    displayName: botTokenState.displayName
   });
 }
 
@@ -440,6 +474,12 @@ function sanitizeConfig(input = {}) {
     ttsPitch: clampInt(input.ttsPitch, -50, 50, base.ttsPitch ?? 0),
     ttsVolume: clampInt(input.ttsVolume, -50, 50, base.ttsVolume ?? 0),
     botResponseWindowSeconds: clampInt(input.botResponseWindowSeconds, 20, 300, base.botResponseWindowSeconds ?? 120),
+    localAiEnabled: bool(input.localAiEnabled, base.localAiEnabled ?? true),
+    localAiMentionOnly: bool(input.localAiMentionOnly, base.localAiMentionOnly ?? true),
+    localAiPort: clampInt(input.localAiPort, 1024, 65535, base.localAiPort ?? 11435),
+    localAiMaxTokens: clampInt(input.localAiMaxTokens, 32, 160, base.localAiMaxTokens ?? 96),
+    localAiTemperature: clampInt(input.localAiTemperature, 0, 100, base.localAiTemperature ?? 78),
+    localAiTimeoutSeconds: clampInt(input.localAiTimeoutSeconds, 15, 180, base.localAiTimeoutSeconds ?? 60),
     ignoreUsers,
     customPersonality: str(input.customPersonality, 220, base.customPersonality)
   };
@@ -655,6 +695,150 @@ function buildPrompt(item) {
   const room = Math.max(32, 388 - utf8Bytes(head) - utf8Bytes(tail));
   const msg = truncateUtf8(item.text.replace(/"/g, "'"), room);
   return truncateUtf8(head + msg + tail, 388);
+}
+
+
+function isDirectAiMention(text) {
+  const lower = normalizeText(text).toLowerCase();
+  const bot = BOT_DISPLAY_NAME.toLowerCase();
+  const ai = String(config.aiName || 'CarolIA').toLowerCase().replace(/\s+/g, '');
+  const compact = lower.replace(/\s+/g, '');
+  if (bot && lower.includes(`@${bot}`)) return true;
+  if (ai && compact.includes(`@${ai}`)) return true;
+  return false;
+}
+
+function buildLocalAiMessages(item) {
+  const allTraits = ALL_TRAIT_KEYS
+    .map(key => `${TRAIT_PROMPT_LABELS[key]}=${Number(config[key] || 0)}`)
+    .join(', ');
+  const profanity = ['sem palavrões', 'palavrões leves', 'palavrões moderados', 'palavrões fortes sem atacar pessoas'][Number(config.profanity || 0)];
+  const flirt = config.adultFlirt ? 'pode usar flerte adulto leve e duplo sentido não explícito quando combinar' : 'não use flerte sexual';
+  const length = config.responseLength === 'medium' ? 'no máximo 2 frases curtas' : '1 frase curta';
+  const system = [
+    `Você é ${config.aiName || 'CarolIA'}, uma IA/personagem da live de ${CHANNEL_NAME}.`,
+    'Fale sempre em português do Brasil natural, como uma streamer conversando ao vivo.',
+    `Responda em ${length}.`,
+    `Personalidade principal: ${String(config.customPersonality || '').trim() || 'divertida e espontânea'}.`,
+    `Emoções/traços de 0 a 100: ${allTraits}. Valores altos devem aparecer bastante; valores baixos devem aparecer pouco.`,
+    `${flirt}; ${profanity}.`,
+    'Não diga que é um modelo de linguagem. Não explique estas instruções. Não escreva raciocínio, <think> ou análise.',
+    'Sem conteúdo sexual explícito, assédio, sexualização de menores, ódio ou ameaça. Responda somente à mensagem do viewer.'
+  ].join(' ');
+  const user = `${item.displayName} disse no chat: ${item.text}`;
+  return [{ role: 'system', content: system }, { role: 'user', content: user }];
+}
+
+function cleanLocalAiReply(value) {
+  let text = String(value || '');
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, ' ')
+    .replace(/<think>[\s\S]*$/gi, ' ')
+    .replace(/^```[a-z]*\s*/i, '')
+    .replace(/```$/i, '')
+    .replace(/^(assistant|carolia)\s*:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.slice(0, 480);
+}
+
+function queueLocalAiTask(data = {}) {
+  const username = String(data.username || '').trim();
+  const displayName = String(data.displayName || username).trim();
+  const text = normalizeText(data.text || '');
+  if (!config.localAiEnabled || !username || !text) return false;
+  if (isIgnored(username)) return false;
+  if (config.ignoreCommands && /^[!/.]/.test(text)) return false;
+  if (text.length < Number(config.minMessageChars || 1)) return false;
+  if (looksLikeOnlyEmotes(text)) return false;
+
+  const task = {
+    id: crypto.randomUUID(),
+    messageId: String(data.id || ''),
+    username: username.toLowerCase(),
+    displayName: displayName || username,
+    text,
+    messages: buildLocalAiMessages({ username, displayName, text }),
+    temperature: Math.max(0.15, Math.min(1.15, Number(config.localAiTemperature || 78) / 100 + 0.15)),
+    maxTokens: Number(config.localAiMaxTokens || 96),
+    createdAt: Date.now(),
+    claimedBy: '',
+    claimedAt: 0,
+    done: false
+  };
+  runtime.localAiPending = runtime.localAiPending.filter(x => !(x.username === task.username && !x.done));
+  runtime.localAiPending.push(task);
+  while (runtime.localAiPending.length > 20) runtime.localAiPending.shift();
+  runtime.localAiQueued++;
+  runtime.lastCandidateAt = new Date(task.createdAt).toISOString();
+  return true;
+}
+
+function cleanupLocalAiTasks() {
+  const now = Date.now();
+  const timeoutMs = Number(config.localAiTimeoutSeconds || 60) * 1000;
+  for (const task of runtime.localAiPending) {
+    if (!task.done && task.claimedAt && now - task.claimedAt > timeoutMs) {
+      task.claimedAt = 0;
+      task.claimedBy = '';
+    }
+  }
+  runtime.localAiPending = runtime.localAiPending.filter(task => !task.done && now - task.createdAt < 5 * 60 * 1000);
+}
+
+function claimLocalAiTask(workerId) {
+  cleanupLocalAiTasks();
+  const task = runtime.localAiPending.find(x => !x.done && !x.claimedAt);
+  if (!task) return null;
+  task.claimedBy = String(workerId || 'overlay').slice(0, 80);
+  task.claimedAt = Date.now();
+  return {
+    id: task.id,
+    messageId: task.messageId,
+    username: task.username,
+    displayName: task.displayName,
+    text: task.text,
+    messages: task.messages,
+    temperature: task.temperature,
+    maxTokens: task.maxTokens
+  };
+}
+
+function releaseLocalAiTask(id, workerId) {
+  const task = runtime.localAiPending.find(x => x.id === id && !x.done);
+  if (!task) return false;
+  if (task.claimedBy && workerId && task.claimedBy !== workerId) return false;
+  task.claimedAt = 0;
+  task.claimedBy = '';
+  return true;
+}
+
+async function completeLocalAiTask(id, rawReply) {
+  const task = runtime.localAiPending.find(x => x.id === id && !x.done);
+  if (!task) return { ok: false, duplicate: true };
+  const reply = cleanLocalAiReply(rawReply);
+  if (!reply) throw new Error('A IA local devolveu uma resposta vazia.');
+
+  let chatResult = null;
+  rememberDirectSpeech(reply);
+  try {
+    // Primeiro garante que a resposta realmente foi enviada ao chat.
+    chatResult = await sendBotChatMessage(reply, task.messageId || null);
+  } catch (err) {
+    runtime.bot.lastError = err.message;
+    throw new Error(`Não consegui enviar no chat: ${err.message}`);
+  }
+
+  task.done = true;
+  runtime.localAiProcessed++;
+  runtime.recentAnsweredUsers.set(task.username, Date.now());
+  await publishBotReply(reply, {
+    source: 'local-ai-mention',
+    botName: botTokenState.displayName || BOT_DISPLAY_NAME,
+    localAi: true,
+    replyToUser: task.displayName
+  });
+  cleanupLocalAiTasks();
+  return { ok: true, reply, chatResult };
 }
 
 function publicBase(req) {
@@ -879,21 +1063,25 @@ function timerAuth(req, res, next) {
 function b64url(input) { return Buffer.from(input).toString('base64url'); }
 function hmac(input) { return crypto.createHmac('sha256', PANEL_KEY || 'carolia').update(input).digest('base64url'); }
 
-function makeOauthState() {
-  const payload = `${Date.now()}.${crypto.randomBytes(16).toString('hex')}`;
+function makeOauthState(role = 'reader') {
+  const safeRole = role === 'bot' ? 'bot' : 'reader';
+  const payload = `${Date.now()}.${safeRole}.${crypto.randomBytes(16).toString('hex')}`;
   return `${b64url(payload)}.${hmac(payload)}`;
 }
 
-function verifyOauthState(state) {
+function parseOauthState(state) {
   try {
     const [encoded, sig] = String(state || '').split('.');
     const payload = Buffer.from(encoded, 'base64url').toString('utf8');
     const expected = hmac(payload);
-    if (!sig || sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
-    const [ts] = payload.split('.');
-    return Date.now() - Number(ts) < 15 * 60 * 1000;
-  } catch { return false; }
+    if (!sig || sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+    const [ts, role] = payload.split('.');
+    if (Date.now() - Number(ts) >= 15 * 60 * 1000) return null;
+    return { role: role === 'bot' ? 'bot' : 'reader' };
+  } catch { return null; }
 }
+
+function verifyOauthState(state) { return Boolean(parseOauthState(state)); }
 
 async function rawFetchJson(url, options = {}) {
   const res = await fetch(url, options);
@@ -993,6 +1181,130 @@ async function twitchApi(endpoint, options = {}, retry = true) {
     }
     throw err;
   }
+}
+
+
+function setBotTokenData(data) {
+  botTokenState.accessToken = String(data.access_token || botTokenState.accessToken || '');
+  botTokenState.refreshToken = String(data.refresh_token || botTokenState.refreshToken || '');
+  botTokenState.expiresAt = Date.now() + Math.max(60, Number(data.expires_in || 3600) - 60) * 1000;
+  persistBotTwitchSession();
+  persistBotRefreshTokenToRender().catch(() => {});
+}
+
+async function exchangeCodeForBotToken(code, redirectUri) {
+  const body = new URLSearchParams({
+    client_id: TWITCH_CLIENT_ID,
+    client_secret: TWITCH_CLIENT_SECRET,
+    code,
+    grant_type: 'authorization_code',
+    redirect_uri: redirectUri
+  });
+  const data = await rawFetchJson('https://id.twitch.tv/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+  setBotTokenData(data);
+  return data;
+}
+
+async function persistBotRefreshTokenToRender() {
+  if (!RENDER_API_KEY || !RENDER_SERVICE_ID || !botTokenState.refreshToken) return false;
+  try {
+    await rawFetchJson(`https://api.render.com/v1/services/${encodeURIComponent(RENDER_SERVICE_ID)}/env-vars/BOT_TWITCH_REFRESH_TOKEN`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${RENDER_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ value: botTokenState.refreshToken })
+    });
+    runtime.bot.refreshTokenPersistence = 'Render API ✅';
+    return true;
+  } catch (err) {
+    runtime.bot.refreshTokenPersistence = `Render API falhou: ${err.message}`;
+    runtime.bot.lastError = err.message;
+    return false;
+  }
+}
+
+async function refreshBotUserToken() {
+  if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET || !botTokenState.refreshToken) throw new Error('Conta que responde ainda não foi autorizada.');
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: botTokenState.refreshToken,
+    client_id: TWITCH_CLIENT_ID,
+    client_secret: TWITCH_CLIENT_SECRET
+  });
+  const data = await rawFetchJson('https://id.twitch.tv/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body
+  });
+  setBotTokenData(data);
+  return botTokenState.accessToken;
+}
+
+async function ensureBotToken() {
+  if (botTokenState.accessToken && Date.now() < botTokenState.expiresAt) return botTokenState.accessToken;
+  if (botTokenState.refreshToken) return refreshBotUserToken();
+  throw new Error('Conecte a conta icarolzinhabot no painel para a IA local responder no chat.');
+}
+
+async function botTwitchApi(endpoint, options = {}, retry = true) {
+  const token = await ensureBotToken();
+  const headers = {
+    ...(options.headers || {}),
+    'Authorization': `Bearer ${token}`,
+    'Client-Id': TWITCH_CLIENT_ID
+  };
+  try {
+    return await rawFetchJson(`https://api.twitch.tv/helix${endpoint}`, { ...options, headers });
+  } catch (err) {
+    if (retry && err.status === 401 && botTokenState.refreshToken) {
+      await refreshBotUserToken();
+      return botTwitchApi(endpoint, options, false);
+    }
+    throw err;
+  }
+}
+
+async function loadBotIdentity() {
+  const data = await botTwitchApi('/users');
+  const user = data?.data?.[0];
+  if (!user) throw new Error('Não consegui identificar a conta Twitch que responde.');
+  botTokenState.userId = String(user.id);
+  botTokenState.login = String(user.login);
+  botTokenState.displayName = String(user.display_name || user.login);
+  runtime.bot.connected = true;
+  runtime.bot.userId = botTokenState.userId;
+  runtime.bot.login = botTokenState.login;
+  runtime.bot.displayName = botTokenState.displayName;
+  runtime.bot.lastError = null;
+  persistBotTwitchSession();
+  return user;
+}
+
+async function sendBotChatMessage(message, replyParentMessageId = null) {
+  if (!runtime.twitch.broadcasterId) await loadBroadcasterId();
+  if (!botTokenState.userId) await loadBotIdentity();
+  const body = {
+    broadcaster_id: runtime.twitch.broadcasterId,
+    sender_id: botTokenState.userId,
+    message: cleanLocalAiReply(message).slice(0, 480)
+  };
+  if (replyParentMessageId) body.reply_parent_message_id = String(replyParentMessageId);
+  const data = await botTwitchApi('/chat/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const result = data?.data?.[0];
+  if (!result?.is_sent) throw new Error(result?.drop_reason?.message || 'A Twitch não enviou a resposta da IA.');
+  runtime.bot.connected = true;
+  runtime.bot.lastError = null;
+  return result;
 }
 
 async function loadAuthorizedIdentity() {
@@ -1140,13 +1452,25 @@ async function connectEventSub(url = 'wss://eventsub.wss.twitch.tv/ws') {
         }
         return;
       }
-      acceptChatMessage({
+      const viewerMessage = {
         id: ev.message_id,
         username: ev.chatter_user_login,
         displayName: ev.chatter_user_name,
         text: messageText,
         badges: ev.badges || []
-      });
+      };
+
+      // V10: @menção direta da IA NÃO entra na fila do Timer.
+      // Ela vai para o Qwen local do PC através do mesmo Browser Source do avatar.
+      if (config.localAiEnabled && (!config.localAiMentionOnly || isDirectAiMention(messageText))) {
+        runtime.messagesSeen++;
+        if (!rememberMessageId(String(ev.message_id || ''))) {
+          if (queueLocalAiTask(viewerMessage)) runtime.messagesAccepted++;
+        }
+        return;
+      }
+
+      acceptChatMessage(viewerMessage);
       return;
     }
 
@@ -1195,6 +1519,25 @@ function bootstrapTwitchSession() {
   tokenState.userId = String(local?.userId || '');
   tokenState.login = String(local?.login || '');
   tokenState.displayName = String(local?.displayName || '');
+
+  const botLocal = readJson(BOT_TWITCH_SESSION_FILE, null);
+  botTokenState.refreshToken = ENV_BOT_REFRESH_TOKEN || String(botLocal?.refreshToken || '');
+  botTokenState.userId = String(botLocal?.userId || '');
+  botTokenState.login = String(botLocal?.login || '');
+  botTokenState.displayName = String(botLocal?.displayName || '');
+  if (botTokenState.refreshToken) {
+    runtime.bot.connected = true;
+    runtime.bot.userId = botTokenState.userId || null;
+    runtime.bot.login = botTokenState.login || null;
+    runtime.bot.displayName = botTokenState.displayName || null;
+    if (TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET) {
+      loadBotIdentity().catch(err => {
+        runtime.bot.connected = false;
+        runtime.bot.lastError = err.message;
+      });
+    }
+  }
+
   if (tokenState.refreshToken && TWITCH_CLIENT_ID && TWITCH_CLIENT_SECRET) {
     startEventSub().catch(err => {
       runtime.twitch.status = 'erro';
@@ -1246,8 +1589,48 @@ app.get('/api/overlay-config', overlayAuth, (_req, res) => {
     avatarEnabled: config.avatarEnabled !== false,
     avatarImageUrl: config.avatarImageUrl || '',
     showSubtitles: false,
-    ttsEnabled: config.ttsEnabled !== false
+    ttsEnabled: config.ttsEnabled !== false,
+    localAiEnabled: config.localAiEnabled !== false,
+    localAiUrl: `http://127.0.0.1:${Number(config.localAiPort || 11435)}`,
+    localAiTimeoutSeconds: Number(config.localAiTimeoutSeconds || 60)
   });
+});
+
+app.get('/api/local-ai/claim', overlayAuth, (req, res) => {
+  if (!config.localAiEnabled) return res.json({ ok: true, task: null, disabled: true });
+  if (!botTokenState.refreshToken) return res.json({ ok: true, task: null, botMissing: true });
+  const workerId = String(req.query.worker || 'overlay').slice(0, 80);
+  const task = claimLocalAiTask(workerId);
+  res.json({ ok: true, task });
+});
+
+app.post('/api/local-ai/result', overlayAuth, async (req, res) => {
+  try {
+    const id = String(req.body?.id || '');
+    const reply = String(req.body?.reply || '');
+    if (!id || !reply) return res.status(400).json({ error: 'Faltam id ou resposta da IA local.' });
+    const result = await completeLocalAiTask(id, reply);
+    res.json(result);
+  } catch (err) {
+    runtime.localAiFailures++;
+    runtime.localAiWorker.error = err.message;
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/local-ai/release', overlayAuth, (req, res) => {
+  const ok = releaseLocalAiTask(String(req.body?.id || ''), String(req.body?.worker || ''));
+  res.json({ ok });
+});
+
+app.post('/api/local-ai/heartbeat', overlayAuth, (req, res) => {
+  runtime.localAiWorker = {
+    lastSeenAt: Date.now(),
+    ok: Boolean(req.body?.ok),
+    model: String(req.body?.model || '').slice(0, 160),
+    error: String(req.body?.error || '').slice(0, 300)
+  };
+  res.json({ ok: true });
 });
 
 app.use(express.static(path.join(ROOT, 'public')));
@@ -1263,9 +1646,22 @@ app.get('/health', (_req, res) => {
 
 app.get('/auth/twitch/callback', async (req, res) => {
   try {
-    if (!verifyOauthState(req.query.state)) throw new Error('Estado OAuth inválido ou expirado. Volte ao painel e tente novamente.');
+    const stateInfo = parseOauthState(req.query.state);
+    if (!stateInfo) throw new Error('Estado OAuth inválido ou expirado. Volte ao painel e tente novamente.');
     if (req.query.error) throw new Error(`Twitch recusou autorização: ${req.query.error_description || req.query.error}`);
     if (!req.query.code) throw new Error('A Twitch não retornou o código de autorização.');
+
+    if (stateInfo.role === 'bot') {
+      await exchangeCodeForBotToken(String(req.query.code), callbackUrl(req));
+      await loadBotIdentity();
+      const autoSaved = await persistBotRefreshTokenToRender();
+      const refresh = botTokenState.refreshToken.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const persistHtml = autoSaved
+        ? '<p class="ok"><b>Token do bot salvo automaticamente no Render ✅</b></p>'
+        : '<p>Para sobreviver a redeploys, copie abaixo para <code>BOT_TWITCH_REFRESH_TOKEN</code> no Render.</p><textarea rows="5" readonly>' + refresh + '</textarea>';
+      return res.type('html').send(`<!doctype html><meta charset="utf-8"><title>Bot CarolIA conectado</title><style>body{font-family:system-ui;background:#0d0a12;color:#fff;padding:32px;max-width:850px;margin:auto}code,textarea{background:#191220;color:#f6eaff;border:1px solid #40304f;border-radius:10px;padding:12px;width:100%;box-sizing:border-box}a{color:#c6a1ff}.ok{color:#71eda0}</style><h1 class="ok">Conta que responde conectada ✅</h1><p>As respostas imediatas da IA local sairão como <b>${botTokenState.displayName}</b>.</p>${persistHtml}<p><a href="/">Voltar ao painel</a></p>`);
+    }
+
     await exchangeCodeForToken(String(req.query.code), callbackUrl(req));
     await loadAuthorizedIdentity();
     await startEventSub();
@@ -1274,7 +1670,7 @@ app.get('/auth/twitch/callback', async (req, res) => {
     const persistHtml = autoSaved
       ? '<p class="ok"><b>Refresh Token salvo automaticamente no Environment do Render ✅</b></p><p>A API do Render atualizou <code>TWITCH_REFRESH_TOKEN</code>. Não é necessário copiar o token manualmente.</p>'
       : '<p>Para a autorização sobreviver a reinícios/redeploys, copie o valor abaixo para <code>TWITCH_REFRESH_TOKEN</code> no Render.</p><textarea rows="5" readonly>' + refresh + '</textarea><p><b>Não publique esse token no GitHub e não envie para outras pessoas.</b></p>';
-    res.type('html').send(`<!doctype html><meta charset="utf-8"><title>CarolIA conectada</title><style>body{font-family:system-ui;background:#0d0a12;color:#fff;padding:32px;max-width:850px;margin:auto}code,textarea{background:#191220;color:#f6eaff;border:1px solid #40304f;border-radius:10px;padding:12px;width:100%;box-sizing:border-box}a{color:#c6a1ff}.ok{color:#71eda0}</style><h1 class="ok">Twitch conectada ✅</h1><p>Conta autorizada: <b>${tokenState.displayName}</b>. Ela será usada somente para LER o chat de <b>${CHANNEL_NAME}</b>.</p>${persistHtml}<p><a href="/">Voltar ao painel</a></p>`);
+    res.type('html').send(`<!doctype html><meta charset="utf-8"><title>CarolIA conectada</title><style>body{font-family:system-ui;background:#0d0a12;color:#fff;padding:32px;max-width:850px;margin:auto}code,textarea{background:#191220;color:#f6eaff;border:1px solid #40304f;border-radius:10px;padding:12px;width:100%;box-sizing:border-box}a{color:#c6a1ff}.ok{color:#71eda0}</style><h1 class="ok">Twitch conectada ✅</h1><p>Conta autorizada: <b>${tokenState.displayName}</b>. Ela lê o chat de <b>${CHANNEL_NAME}</b>.</p>${persistHtml}<p><a href="/">Voltar ao painel</a></p>`);
   } catch (err) {
     res.status(400).type('html').send(`<meta charset="utf-8"><body style="font-family:system-ui;background:#120b10;color:white;padding:32px"><h1>Erro ao conectar Twitch</h1><pre>${String(err.message).replace(/</g, '&lt;')}</pre><a style="color:#d6b4ff" href="/">Voltar</a></body>`);
   }
@@ -1355,6 +1751,16 @@ app.get('/api/status', panelAuth, (req, res) => {
     lastTtsProvider: runtime.lastTtsProvider,
     lastSpokenReply: runtime.lastSpokenReply,
     overlayClients: overlayClients.size,
+    localAiQueued: runtime.localAiQueued,
+    localAiProcessed: runtime.localAiProcessed,
+    localAiFailures: runtime.localAiFailures,
+    localAiPending: runtime.localAiPending.filter(x => !x.done).length,
+    localAiWorker: {
+      ...runtime.localAiWorker,
+      online: Boolean(runtime.localAiWorker.lastSeenAt && Date.now() - runtime.localAiWorker.lastSeenAt < 20000)
+    },
+    bot: runtime.bot,
+    botRefreshTokenConfiguredInEnv: Boolean(ENV_BOT_REFRESH_TOKEN),
     suppressed: runtime.suppressed,
     lastAiDispatchAt: runtime.lastAiDispatchAt ? new Date(runtime.lastAiDispatchAt).toISOString() : null,
     lastCandidateAt: runtime.lastCandidateAt,
@@ -1385,14 +1791,15 @@ app.get('/api/twitch-auth-url', panelAuth, (req, res) => {
   if (!TWITCH_CLIENT_ID || !TWITCH_CLIENT_SECRET) {
     return res.status(400).json({ error: 'Configure TWITCH_CLIENT_ID e TWITCH_CLIENT_SECRET no Render primeiro.' });
   }
+  const role = String(req.query.role || 'reader') === 'bot' ? 'bot' : 'reader';
   const url = new URL('https://id.twitch.tv/oauth2/authorize');
   url.searchParams.set('client_id', TWITCH_CLIENT_ID);
   url.searchParams.set('redirect_uri', callbackUrl(req));
   url.searchParams.set('response_type', 'code');
-  url.searchParams.set('scope', 'user:read:chat');
+  url.searchParams.set('scope', role === 'bot' ? 'user:write:chat' : 'user:read:chat');
   url.searchParams.set('force_verify', 'true');
-  url.searchParams.set('state', makeOauthState());
-  res.json({ url: url.toString() });
+  url.searchParams.set('state', makeOauthState(role));
+  res.json({ url: url.toString(), role });
 });
 
 app.post('/api/reconnect-twitch', panelAuth, async (_req, res) => {
