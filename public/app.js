@@ -62,7 +62,7 @@ function fill(c) {
     'enabled','aiName','responseLength','profanity','adultFlirt','mentionUser','answerChance',
     'cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ignoreCommands',
     'ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','customPersonality',
-    'avatarEnabled','avatarImageUrl','showSubtitles','ttsEnabled','ttsVoice','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds'
+    'avatarEnabled','avatarImageUrl','ttsEnabled','ttsVoice','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds'
   ];
   for (const id of ids) {
     const el = $(id); if (!el) continue;
@@ -78,7 +78,7 @@ function fill(c) {
 
 function collect() {
   const out = { ...cfg };
-  ['enabled','adultFlirt','mentionUser','ignoreCommands','ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','avatarEnabled','showSubtitles','ttsEnabled']
+  ['enabled','adultFlirt','mentionUser','ignoreCommands','ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','avatarEnabled','ttsEnabled']
     .forEach(id => out[id] = $(id).checked);
   ['aiName','responseLength','customPersonality','avatarImageUrl','ttsVoice'].forEach(id => out[id] = $(id).value);
   ['profanity','answerChance','cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds']

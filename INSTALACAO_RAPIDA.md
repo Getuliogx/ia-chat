@@ -103,4 +103,4 @@ Depois do deploy, abra o painel e procure **Avatar da IA — corpo + voz**.
 4. Clique em **Testar corpo + voz agora** no painel.
 5. Se quiser seu próprio personagem, informe uma URL de PNG/WebP transparente em **Imagem personalizada do corpo**.
 
-A voz padrão é `pt-BR-FranciscaNeural`.
+A voz padrão é `pt-BR-FranciscaNeural` (feminina). O servidor aceita somente vozes femininas PT-BR configuradas no painel.

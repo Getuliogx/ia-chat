@@ -7,16 +7,9 @@ const stage = $('stage');
 const voice = $('voice');
 const queue = [];
 let busy = false;
-let cfg = { aiName:'CarolIA', avatarEnabled:true, avatarImageUrl:'', showSubtitles:true, ttsEnabled:true };
-
-function setConnection(text, state='') {
-  const el = $('connection');
-  el.textContent = text;
-  el.className = `connection ${state}`.trim();
-}
+let cfg = { aiName:'CarolIA', avatarEnabled:true, avatarImageUrl:'', ttsEnabled:true };
 
 function applyAvatar() {
-  $('name').textContent = cfg.aiName || 'CarolIA';
   const custom = $('customAvatar');
   const fallback = $('defaultAvatar');
   if (cfg.avatarEnabled === false) {
@@ -46,32 +39,31 @@ function setSpeaking(active) {
   stage.classList.toggle('speaking', active);
 }
 
-function showText(item) {
-  $('name').textContent = item.aiName || cfg.aiName || 'CarolIA';
-  $('subtitle').textContent = item.text || '';
-  const show = item.showSubtitles !== false && Boolean(item.text);
-  $('bubble').classList.toggle('hidden', !show);
+function waitForText(text) {
+  return new Promise(resolve => setTimeout(resolve, Math.min(6500, Math.max(1300, String(text || '').length * 42))));
 }
 
-function hideTextSoon(ms=1600) {
-  setTimeout(() => {
-    if (!busy) $('bubble').classList.add('hidden');
-  }, ms);
-}
-
-function browserSpeechFallback(text) {
-  return new Promise(resolve => {
-    if (!('speechSynthesis' in window) || !text) return resolve();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'pt-BR';
-    const voices = speechSynthesis.getVoices();
-    const br = voices.find(v => /^pt-BR$/i.test(v.lang)) || voices.find(v => /^pt/i.test(v.lang));
-    if (br) utter.voice = br;
-    utter.onend = resolve;
-    utter.onerror = resolve;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utter);
-  });
+async function playServerAudio(item) {
+  if (!item.audioUrl || item.ttsEnabled === false) return false;
+  try {
+    await new Promise((resolve, reject) => {
+      const done = () => { cleanup(); resolve(); };
+      const fail = () => { cleanup(); reject(new Error('Falha ao reproduzir o TTS feminino')); };
+      const cleanup = () => {
+        voice.removeEventListener('ended', done);
+        voice.removeEventListener('error', fail);
+      };
+      voice.addEventListener('ended', done, {once:true});
+      voice.addEventListener('error', fail, {once:true});
+      voice.src = item.audioUrl;
+      voice.volume = 1;
+      voice.play().catch(fail);
+    });
+    return true;
+  } catch (err) {
+    console.error('[CarolIA avatar] áudio feminino não reproduzido:', err.message);
+    return false;
+  }
 }
 
 async function playItem(item) {
@@ -80,40 +72,16 @@ async function playItem(item) {
     aiName:item.aiName ?? cfg.aiName,
     avatarEnabled:item.avatarEnabled ?? cfg.avatarEnabled,
     avatarImageUrl:item.avatarImageUrl ?? cfg.avatarImageUrl,
-    showSubtitles:item.showSubtitles ?? cfg.showSubtitles,
     ttsEnabled:item.ttsEnabled ?? cfg.ttsEnabled
   };
   applyAvatar();
-  showText(item);
   setSpeaking(true);
 
-  if (item.audioUrl && item.ttsEnabled !== false) {
-    try {
-      await new Promise((resolve, reject) => {
-        const done = () => { cleanup(); resolve(); };
-        const fail = () => { cleanup(); reject(new Error('Falha ao reproduzir TTS')); };
-        const cleanup = () => {
-          voice.removeEventListener('ended', done);
-          voice.removeEventListener('error', fail);
-        };
-        voice.addEventListener('ended', done, {once:true});
-        voice.addEventListener('error', fail, {once:true});
-        voice.src = item.audioUrl;
-        voice.volume = 1;
-        voice.play().catch(fail);
-      });
-    } catch {
-      await browserSpeechFallback(item.text);
-    }
-  } else if (item.ttsEnabled !== false) {
-    await browserSpeechFallback(item.text);
-  } else {
-    await new Promise(r => setTimeout(r, Math.min(6500, Math.max(1800, (item.text || '').length * 45))));
-  }
+  const played = await playServerAudio(item);
+  if (!played) await waitForText(item.text);
 
   setSpeaking(false);
   busy = false;
-  hideTextSoon();
   runQueue();
 }
 
@@ -136,22 +104,18 @@ function enqueue(item) {
 async function start() {
   try {
     await loadConfig();
-    setConnection('CONECTADO', 'ok');
     const es = new EventSource(`/api/overlay-events?key=${encodeURIComponent(key)}`);
-    es.addEventListener('ready', () => setConnection('CONECTADO', 'ok'));
     es.addEventListener('reply', ev => {
       try { enqueue(JSON.parse(ev.data)); } catch {}
     });
-    es.onerror = () => setConnection('RECONECTANDO', 'err');
-    es.onopen = () => setConnection('CONECTADO', 'ok');
+    es.onerror = () => console.warn('[CarolIA avatar] reconectando ao servidor...');
   } catch (err) {
-    setConnection(err.message || 'ERRO', 'err');
+    console.error('[CarolIA avatar]', err.message || err);
   }
 }
 
 window.addEventListener('beforeunload', () => {
   try { voice.pause(); } catch {}
-  try { speechSynthesis.cancel(); } catch {}
 });
 
 start();

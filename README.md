@@ -4,7 +4,6 @@ Esta versão mantém o fluxo original Twitch → Render → StreamElements `$(ai
 
 - avatar de corpo inteiro incluído no projeto;
 - boca/corpo animados enquanto fala;
-- legenda da resposta;
 - TTS neural em PT-BR gerado como MP3 no servidor;
 - suporte a PNG/WebP transparente personalizado;
 - URL protegida para usar como Browser Source;

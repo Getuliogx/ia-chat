@@ -8,7 +8,7 @@ Esta versão adiciona um avatar de corpo inteiro e voz TTS ao projeto original.
 2. Quando `icarolzinhabot` (ou `streamelements`, se o Custom Bot Name não estiver ativo) publica a resposta, o EventSub vê essa mensagem.
 3. O servidor reconhece que a mensagem chegou logo depois de um prompt da IA.
 4. O servidor gera um MP3 com voz neural em português do Brasil.
-5. A página `/avatar.html` recebe a resposta em tempo real, mostra a legenda, anima o corpo/boca e toca o MP3.
+5. A página `/avatar.html` recebe a resposta em tempo real, anima o corpo e toca o MP3, sem legenda.
 
 ## No Render
 
@@ -33,7 +33,7 @@ O avatar padrão já vem no projeto. Para trocar pelo seu corpo/personagem, cole
 
 `pt-BR-FranciscaNeural`
 
-Os campos do painel permitem mudar voz, velocidade, tom e volume. A síntese é feita no servidor usando `node-edge-tts`; se ela falhar, a página tenta usar o TTS do navegador como fallback.
+Os campos do painel permitem mudar voz, velocidade, tom e volume. A síntese é feita no servidor usando `node-edge-tts`; se ela falhar, o avatar não troca para a voz do navegador, evitando cair em uma voz masculina.
 
 ## Teste
 

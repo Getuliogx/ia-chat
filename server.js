@@ -27,6 +27,19 @@ const PUBLIC_BASE_URL = String(process.env.PUBLIC_BASE_URL || '').trim().replace
 const RENDER_API_KEY = String(process.env.RENDER_API_KEY || '').trim();
 const RENDER_SERVICE_ID = String(process.env.RENDER_SERVICE_ID || '').trim();
 const TTS_DIR = path.join(DATA_DIR, 'tts');
+const DEFAULT_FEMALE_TTS_VOICE = 'pt-BR-FranciscaNeural';
+const FEMALE_TTS_VOICES = new Set([
+  'pt-BR-FranciscaNeural',
+  'pt-BR-ThalitaMultilingualNeural',
+  'pt-BR-BrendaNeural',
+  'pt-BR-GiovannaNeural',
+  'pt-BR-ManuelaNeural',
+  'pt-BR-YaraNeural'
+]);
+function femaleTtsVoice(value) {
+  const v = String(value || '').trim();
+  return FEMALE_TTS_VOICES.has(v) ? v : DEFAULT_FEMALE_TTS_VOICE;
+}
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(TTS_DIR, { recursive: true });
@@ -393,9 +406,9 @@ function sanitizeConfig(input = {}) {
     adultFlirt: bool(input.adultFlirt, base.adultFlirt),
     avatarEnabled: bool(input.avatarEnabled, base.avatarEnabled ?? true),
     avatarImageUrl: str(input.avatarImageUrl, 500, base.avatarImageUrl || ''),
-    showSubtitles: bool(input.showSubtitles, base.showSubtitles ?? true),
+    showSubtitles: false,
     ttsEnabled: bool(input.ttsEnabled, base.ttsEnabled ?? true),
-    ttsVoice: str(input.ttsVoice, 100, base.ttsVoice || 'pt-BR-FranciscaNeural'),
+    ttsVoice: femaleTtsVoice(input.ttsVoice || base.ttsVoice),
     ttsRate: clampInt(input.ttsRate, -50, 50, base.ttsRate ?? 0),
     ttsPitch: clampInt(input.ttsPitch, -50, 50, base.ttsPitch ?? 0),
     ttsVolume: clampInt(input.ttsVolume, -50, 50, base.ttsVolume ?? 0),
@@ -679,7 +692,7 @@ async function synthesizeTts(text) {
   const filename = `${id}.mp3`;
   const file = path.join(TTS_DIR, filename);
   const tts = new EdgeTTS({
-    voice: config.ttsVoice || 'pt-BR-FranciscaNeural',
+    voice: femaleTtsVoice(config.ttsVoice),
     lang: 'pt-BR',
     outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
     pitch: `${Number(config.ttsPitch || 0) >= 0 ? '+' : ''}${Number(config.ttsPitch || 0)}%`,
@@ -710,7 +723,7 @@ async function publishBotReply(text, meta = {}) {
     aiName: config.aiName || 'CarolIA',
     avatarEnabled: config.avatarEnabled !== false,
     avatarImageUrl: config.avatarImageUrl || '',
-    showSubtitles: config.showSubtitles !== false,
+    showSubtitles: false,
     ttsEnabled: config.ttsEnabled !== false,
     ttsError,
     createdAt: new Date().toISOString(),
@@ -1097,7 +1110,7 @@ app.get('/api/overlay-config', overlayAuth, (_req, res) => {
     aiName: config.aiName || 'CarolIA',
     avatarEnabled: config.avatarEnabled !== false,
     avatarImageUrl: config.avatarImageUrl || '',
-    showSubtitles: config.showSubtitles !== false,
+    showSubtitles: false,
     ttsEnabled: config.ttsEnabled !== false
   });
 });

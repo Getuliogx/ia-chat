@@ -140,15 +140,23 @@
 
       <section class="grid">
         <article class="card">
-          <h2>3. Avatar da IA — corpo + voz</h2>
-          <p>O avatar recebe a resposta publicada pelo <b>icarolzinhabot</b> (ou StreamElements), fala o mesmo texto e anima o corpo/boca.</p>
+          <h2>3. Avatar da IA — corpo + voz feminina</h2>
+          <p>O avatar recebe a resposta publicada pelo <b>icarolzinhabot</b> (ou StreamElements), fala com voz feminina e anima o corpo. Não exibe legenda.</p>
           <label class="check"><input id="avatarEnabled" type="checkbox"> Mostrar corpo/avatar</label>
-          <label class="check"><input id="showSubtitles" type="checkbox"> Mostrar legenda da fala</label>
           <label class="check"><input id="ttsEnabled" type="checkbox"> Ativar voz TTS</label>
           <label>Imagem personalizada do corpo (opcional)<input id="avatarImageUrl" placeholder="https://.../avatar.png"></label>
           <p class="hint">Se ficar vazio, usa o corpo animado que já vem no projeto. Para usar sua personagem, coloque uma PNG/WebP transparente por URL.</p>
           <div class="two">
-            <label>Voz TTS<input id="ttsVoice" value="pt-BR-FranciscaNeural"></label>
+            <label>Voz feminina
+              <select id="ttsVoice">
+                <option value="pt-BR-FranciscaNeural">Francisca — feminina natural</option>
+                <option value="pt-BR-ThalitaMultilingualNeural">Thalita — feminina multilíngue</option>
+                <option value="pt-BR-BrendaNeural">Brenda — feminina</option>
+                <option value="pt-BR-GiovannaNeural">Giovanna — feminina</option>
+                <option value="pt-BR-ManuelaNeural">Manuela — feminina</option>
+                <option value="pt-BR-YaraNeural">Yara — feminina</option>
+              </select>
+            </label>
             <label>Janela para reconhecer resposta do bot (seg)<input id="botResponseWindowSeconds" type="number" min="20" max="300"></label>
           </div>
           <div class="two">
@@ -160,7 +168,7 @@
 
         <article class="card">
           <h2>URL para aparecer na live</h2>
-          <p>Use esta URL como <b>Fonte de Navegador / Browser Source</b> no programa da live. Fundo transparente, corpo inteiro, legenda e áudio.</p>
+          <p>Use esta URL como <b>Fonte de Navegador / Browser Source</b> no programa da live. Fundo transparente, corpo inteiro e áudio. Sem legenda.</p>
           <textarea id="overlayUrl" rows="4" readonly></textarea>
           <div class="row">
             <button data-copy="overlayUrl">Copiar URL do Avatar</button>

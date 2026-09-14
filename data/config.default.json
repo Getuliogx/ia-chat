@@ -63,7 +63,7 @@
   "customPersonality": "Divertida, espontânea, provocante e carismática. Use flerte e duplo sentido leve quando combinar.",
   "avatarEnabled": true,
   "avatarImageUrl": "",
-  "showSubtitles": true,
+  "showSubtitles": false,
   "ttsEnabled": true,
   "ttsVoice": "pt-BR-FranciscaNeural",
   "ttsRate": 0,
