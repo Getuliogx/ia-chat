@@ -1,3 +1,7 @@
+# V11 — sem acesso à conta do bot
+
+O avatar/voz não exigem login na conta `icarolzinhabot`. O relay usa somente a conta do moderador.
+
 # Avatar + voz — CarolIA V10
 
 Continua sendo uma única Browser Source no OBS.

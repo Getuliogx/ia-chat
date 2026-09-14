@@ -1,35 +1,25 @@
-# INSTALAÇÃO RÁPIDA — CarolIA V10
+# INSTALAÇÃO RÁPIDA — CarolIA V11
 
-## 1. GitHub / Render
+## GitHub / Render
+Envie tudo desta pasta para o GitHub, exceto `PC_LOCAL`. Faça o deploy no Render.
 
-Substitua os arquivos do projeto atual pelos arquivos desta pasta e faça o deploy no Render.
+## Twitch
+No painel da CarolIA, clique em **Conectar minha Twitch (MOD)** e entre SOMENTE com a sua própria conta, que é moderadora de `icarolinaporto`.
 
-O Timer do StreamElements continua sendo o mesmo campo exibido pelo painel. Mensagens normais continuam usando o Timer de 1 minuto.
+A V11 pede estas permissões para a sua conta MOD:
+- ler o chat;
+- enviar o gatilho do relay;
+- apagar o gatilho depois.
 
-## 2. Twitch
+Você NÃO precisa de acesso, senha ou token da conta `icarolzinhabot`.
 
-No painel:
+## StreamElements
+Depois de conectar sua Twitch, clique em **Preparar / corrigir relay do StreamElements**. O sistema cria/ajusta automaticamente o comando `!caroliareply` usando seus privilégios de moderador.
 
-- mantenha a conta que lê o chat conectada;
-- clique em **Conectar icarolzinhabot para responder** e faça login na conta Twitch que deve publicar as respostas imediatas.
+O bot do StreamElements publica a resposta usando o Custom Bot Name já configurado no canal.
 
-As duas autorizações usam a mesma Callback URL já cadastrada no Twitch Developer Console.
+## PC local
+Abra `PC_LOCAL/INICIAR_CAROLIA_LOCAL.cmd`. Deixe o avatar/Browser Source aberto no OBS.
 
-## 3. Notebook
-
-Abra:
-
-`PC_LOCAL\INICIAR_CAROLIA_LOCAL.cmd`
-
-Na primeira vez ele baixa automaticamente llama.cpp + Qwen3 0.6B Q4_K_M. Não usa Ollama.
-
-## 4. OBS
-
-Continue usando **um único link**, a URL do avatar mostrada pelo painel. Nessa Browser Source marque **Controlar áudio via OBS**.
-
-## Resultado
-
-- mensagem normal → Timer StreamElements de 1 minuto;
-- `@icarolzinhabot` / `@CarolIA` → Qwen local imediatamente, fora do Timer;
-- resposta local → Twitch + voz feminina + avatar;
-- todos os sliders de emoção/personalidade entram no prompt local.
+## Teste
+No chat, envie: `@CarolIA oi`. A @menção não entra no Timer de 1 minuto; vai ao Qwen local e o StreamElements publica a resposta.

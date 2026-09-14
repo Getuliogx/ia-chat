@@ -1,12 +1,13 @@
-# CarolIA V10
+# CarolIA V11 — MOD em canal de amigo
 
-Sistema híbrido para a live `icarolinaporto`:
+Esta versão foi feita para o cenário correto: você é moderador de `icarolinaporto` e não possui acesso à conta `icarolzinhabot`.
 
-- **mensagens normais:** continuam no `$(ai)` do StreamElements através do Timer de 1 minuto;
-- **@menções da CarolIA:** não entram no Timer; usam Qwen3 0.6B local pelo llama.cpp no notebook;
-- **emoções/persona:** todos os sliders do painel entram no prompt da IA local;
-- **chat imediato:** a conta Twitch conectada como bot publica a resposta pela API oficial da Twitch;
-- **live:** avatar + voz feminina no mesmo link de Browser Source, sem legenda;
-- **PC:** não usa Ollama, não instala serviço e não usa API paga/cota de IA.
+- mensagens normais continuam no Timer de 1 minuto do StreamElements;
+- mensagens com `@CarolIA` ou `@icarolzinhabot` não entram no Timer;
+- as @menções vão ao Qwen local do notebook;
+- sua própria conta MOD aciona automaticamente um comando privado do StreamElements;
+- o StreamElements publica a resposta usando o Custom Bot Name que já estiver configurado no canal;
+- o comando temporário da conta MOD é apagado automaticamente;
+- avatar + voz continuam em um único Browser Source.
 
-Leia `INSTALACAO_RAPIDA.md` para os quatro passos de ativação.
+Veja `INSTALACAO_RAPIDA.md` e `V11_SEM_ACESSO_BOT.md`.

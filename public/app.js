@@ -166,13 +166,13 @@ async function refreshStatus() {
     if ($('localAiDetail')) $('localAiDetail').textContent = localOnline
       ? `${s.localAiWorker?.model || 'Qwen local'} • ${s.localAiPending || 0} aguardando`
       : (s.localAiWorker?.error || 'Abra o avatar no OBS e execute INICIAR_CAROLIA_LOCAL.cmd.');
-    if ($('lastLocalAiError')) $('lastLocalAiError').textContent = s.localAiWorker?.error || s.bot?.lastError || 'Nenhum.';
-    const botConnected = Boolean(s.bot?.connected && s.bot?.displayName);
-    if ($('botMiniDot')) $('botMiniDot').classList.toggle('on', botConnected);
-    if ($('botIdentity')) $('botIdentity').textContent = botConnected ? `${s.bot.displayName} pronta para responder` : 'Conta que responde não conectada';
-    if ($('botDetail')) $('botDetail').textContent = botConnected
-      ? `Twitch ID ${s.bot.userId || ''} • ${s.bot.refreshTokenPersistence || 'token carregado'}`
-      : (s.bot?.lastError || 'Conecte icarolzinhabot para publicar as respostas da IA local.');
+    if ($('lastLocalAiError')) $('lastLocalAiError').textContent = s.localAiWorker?.error || s.relay?.lastError || 'Nenhum.';
+    const relayReady = Boolean(s.relay?.ready);
+    if ($('relayMiniDot')) $('relayMiniDot').classList.toggle('on', relayReady);
+    if ($('relayIdentity')) $('relayIdentity').textContent = relayReady ? 'StreamElements preparado' : 'Relay aguardando/preparação necessária';
+    if ($('relayDetail')) $('relayDetail').textContent = relayReady
+      ? `Comando ${s.relay?.command || '!caroliareply'} • usa ${s.twitch?.authorizedDisplayName || 'sua conta MOD'} para acionar o bot`
+      : (s.relay?.lastError || 'Reconecte sua Twitch (MOD) e clique em Preparar relay.');
     if ($('ttsGenerated')) $('ttsGenerated').textContent = s.ttsGenerated || 0;
     if ($('ttsFailures')) $('ttsFailures').textContent = s.ttsFailures || 0;
     if ($('lastTtsError')) $('lastTtsError').textContent = s.lastTtsError || 'Nenhum.';
@@ -238,10 +238,11 @@ async function connectTwitch() {
   } catch (e) { alert(e.message); }
 }
 
-async function connectBotTwitch() {
+async function setupSeRelay() {
   try {
-    const data = await api('/api/twitch-auth-url?role=bot');
-    window.location.href = data.url;
+    const data = await api('/api/setup-se-relay', {method:'POST'});
+    alert(data.ok ? 'Relay do StreamElements preparado. Agora @menções podem responder pelo bot sem login na conta do bot.' : 'Não foi possível preparar o relay.');
+    refreshStatus();
   } catch (e) { alert(e.message); }
 }
 
@@ -270,7 +271,7 @@ document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click'
 $('simulateBtn').addEventListener('click', simulate);
 $('injectBtn').addEventListener('click', injectTest);
 $('connectTwitch').addEventListener('click', connectTwitch);
-if ($('connectBotTwitch')) $('connectBotTwitch').addEventListener('click', connectBotTwitch);
+if ($('setupSeRelay')) $('setupSeRelay').addEventListener('click', setupSeRelay);
 $('reconnectTwitch').addEventListener('click', reconnectTwitch);
 $('testAvatar').addEventListener('click', testAvatar);
 $('openOverlay').addEventListener('click', () => {

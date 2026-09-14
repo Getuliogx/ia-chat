@@ -113,7 +113,7 @@
             <div><span class="mini-dot" id="twitchMiniDot"></span><strong id="twitchIdentity">Não conectada</strong></div>
             <small id="twitchDetail">Aguardando configuração.</small>
           </div>
-          <p>Autorize <b>a sua própria conta Twitch</b>, que é MOD da <b>icarolinaporto</b>. A conta da sua amiga e o <b>icarolzinhabot</b> não são usados para ler o chat.</p>
+          <p>Autorize <b>a sua própria conta Twitch</b>, que é MOD da <b>icarolinaporto</b>. Ela será usada para ler o chat e acionar o StreamElements. <b>Você não precisa ter acesso à conta icarolzinhabot.</b></p>
           <button id="connectTwitch" class="primary">Conectar minha Twitch (MOD)</button>
           <button id="reconnectTwitch">Reconectar EventSub</button>
           <label>Callback URL para cadastrar no Twitch Developer Console</label>
@@ -159,14 +159,14 @@
         </article>
 
         <article class="card">
-          <h2>Conta Twitch que envia a resposta imediata</h2>
+          <h2>Resposta imediata pelo StreamElements — sem acesso ao bot</h2>
           <div class="connection-box">
-            <div><span class="mini-dot" id="botMiniDot"></span><strong id="botIdentity">Não conectada</strong></div>
-            <small id="botDetail">As respostas locais precisam de uma conta Twitch para escrever no chat.</small>
+            <div><span class="mini-dot" id="relayMiniDot"></span><strong id="relayIdentity">Relay aguardando</strong></div>
+            <small id="relayDetail">Usa somente a SUA conta Twitch de moderador. Você não precisa entrar na conta icarolzinhabot.</small>
           </div>
-          <p>Entre com a conta <b>icarolzinhabot</b>. Ela recebe somente a permissão <code>user:write:chat</code> e é usada para publicar a resposta gerada no seu notebook.</p>
-          <button id="connectBotTwitch" class="primary">Conectar icarolzinhabot para responder</button>
-          <p class="hint">A mesma Callback URL da seção Twitch é usada; não é necessário cadastrar uma segunda callback no Twitch Developer Console.</p>
+          <p>A CarolIA envia um comando temporário como a sua conta MOD. O <b>StreamElements</b> recebe esse comando e publica a resposta pelo <b>Custom Bot Name</b> já configurado no canal. O comando temporário é apagado automaticamente do chat.</p>
+          <button id="setupSeRelay" class="primary">Preparar / corrigir relay do StreamElements</button>
+          <p class="hint"><b>Importante:</b> depois de atualizar para V11, clique uma vez em <b>Conectar minha Twitch (MOD)</b> novamente para autorizar leitura + escrita no chat + apagar o comando temporário. Não precisa da senha nem do login do bot.</p>
         </article>
       </section>
 
