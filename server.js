@@ -289,6 +289,7 @@ const runtime = {
   ttsFailures: 0,
   lastTtsError: null,
   lastTtsAt: null,
+  lastTtsProvider: null,
   lastSpokenMessageId: null,
   suppressed: 0,
   queue: [],
@@ -314,6 +315,27 @@ const runtime = {
     refreshTokenPersistence: RENDER_API_KEY && RENDER_SERVICE_ID ? 'Render API' : 'manual'
   }
 };
+
+const recentDirectSpeech = new Map();
+
+function speechFingerprint(text) {
+  return crypto.createHash('sha1').update(cleanSpeechText(text).toLowerCase()).digest('hex');
+}
+
+function rememberDirectSpeech(text) {
+  const fp = speechFingerprint(text);
+  const now = Date.now();
+  recentDirectSpeech.set(fp, now);
+  for (const [key, at] of recentDirectSpeech) {
+    if (now - at > 90_000) recentDirectSpeech.delete(key);
+  }
+  return fp;
+}
+
+function wasDirectSpeechRecently(text) {
+  const at = recentDirectSpeech.get(speechFingerprint(text));
+  return Boolean(at && Date.now() - at < 90_000);
+}
 
 const tokenState = {
   accessToken: '',
@@ -689,6 +711,64 @@ function pruneTtsFiles(maxAgeMs = 15 * 60 * 1000) {
   } catch {}
 }
 
+async function fetchGoogleTtsChunk(text) {
+  const url = new URL('https://translate.google.com/translate_tts');
+  url.searchParams.set('ie', 'UTF-8');
+  url.searchParams.set('client', 'tw-ob');
+  url.searchParams.set('tl', 'pt-BR');
+  url.searchParams.set('q', text);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const r = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36',
+        'Accept': 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8'
+      }
+    });
+    if (!r.ok) throw new Error(`Google TTS HTTP ${r.status}`);
+    const type = String(r.headers.get('content-type') || '').toLowerCase();
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length < 300) throw new Error(`Google TTS retornou áudio inválido (${buf.length} bytes)`);
+    if (type && !type.includes('audio') && !type.includes('mpeg') && !type.includes('octet-stream')) {
+      throw new Error(`Google TTS retornou ${type}`);
+    }
+    return buf;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function splitTtsText(text, max = 180) {
+  const clean = cleanSpeechText(text);
+  if (clean.length <= max) return [clean];
+  const words = clean.split(/\s+/);
+  const chunks = [];
+  let current = '';
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > max && current) {
+      chunks.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks.slice(0, 5);
+}
+
+async function synthesizeGoogleTts(clean, file) {
+  const chunks = splitTtsText(clean);
+  const buffers = [];
+  for (const chunk of chunks) buffers.push(await fetchGoogleTtsChunk(chunk));
+  const out = Buffer.concat(buffers);
+  if (out.length < 300) throw new Error('Google TTS gerou MP3 vazio');
+  fs.writeFileSync(file, out, { mode: 0o600 });
+  return file;
+}
+
 async function synthesizeTts(text) {
   if (!config.ttsEnabled) return null;
   const clean = cleanSpeechText(text);
@@ -696,30 +776,52 @@ async function synthesizeTts(text) {
   const id = crypto.randomUUID();
   const filename = `${id}.mp3`;
   const file = path.join(TTS_DIR, filename);
-  const tts = new EdgeTTS({
-    voice: femaleTtsVoice(config.ttsVoice),
-    lang: 'pt-BR',
-    outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
-    pitch: `${Number(config.ttsPitch || 0) >= 0 ? '+' : ''}${Number(config.ttsPitch || 0)}%`,
-    rate: `${Number(config.ttsRate || 0) >= 0 ? '+' : ''}${Number(config.ttsRate || 0)}%`,
-    volume: `${Number(config.ttsVolume || 0) >= 0 ? '+' : ''}${Number(config.ttsVolume || 0)}%`,
-    timeout: 30000
-  });
+  let edgeError = null;
+
   try {
+    const tts = new EdgeTTS({
+      voice: femaleTtsVoice(config.ttsVoice),
+      lang: 'pt-BR',
+      outputFormat: 'audio-24khz-48kbitrate-mono-mp3',
+      pitch: `${Number(config.ttsPitch || 0) >= 0 ? '+' : ''}${Number(config.ttsPitch || 0)}%`,
+      rate: `${Number(config.ttsRate || 0) >= 0 ? '+' : ''}${Number(config.ttsRate || 0)}%`,
+      volume: `${Number(config.ttsVolume || 0) >= 0 ? '+' : ''}${Number(config.ttsVolume || 0)}%`,
+      timeout: 18000
+    });
     await tts.ttsPromise(clean, file);
     const st = fs.statSync(file);
-    if (!st.isFile() || st.size < 300) throw new Error(`TTS gerou MP3 inválido (${st.size || 0} bytes)`);
+    if (!st.isFile() || st.size < 300) throw new Error(`Edge TTS gerou MP3 inválido (${st.size || 0} bytes)`);
     runtime.ttsGenerated++;
     runtime.lastTtsError = null;
     runtime.lastTtsAt = new Date().toISOString();
+    runtime.lastTtsProvider = 'edge-francisca';
     pruneTtsFiles();
     return `/tts/${filename}`;
   } catch (err) {
-    runtime.ttsFailures++;
-    runtime.lastTtsError = String(err?.message || err);
-    runtime.lastTtsAt = new Date().toISOString();
+    edgeError = String(err?.message || err);
     try { if (fs.existsSync(file)) fs.unlinkSync(file); } catch {}
-    throw err;
+    console.error('[tts edge]', edgeError);
+  }
+
+  // Reserva: ainda produz um MP3 normal para o mesmo <audio> do Browser Source.
+  // Isso evita ficar totalmente sem voz se o serviço Edge estiver indisponível no Render.
+  try {
+    await synthesizeGoogleTts(clean, file);
+    const st = fs.statSync(file);
+    if (!st.isFile() || st.size < 300) throw new Error(`TTS reserva gerou MP3 inválido (${st.size || 0} bytes)`);
+    runtime.ttsGenerated++;
+    runtime.lastTtsError = edgeError ? `Edge falhou; reserva usada: ${edgeError}` : null;
+    runtime.lastTtsAt = new Date().toISOString();
+    runtime.lastTtsProvider = 'google-pt-BR-reserva';
+    pruneTtsFiles();
+    return `/tts/${filename}`;
+  } catch (fallbackErr) {
+    runtime.ttsFailures++;
+    runtime.lastTtsError = `Edge: ${edgeError || 'falha desconhecida'} | Reserva: ${String(fallbackErr?.message || fallbackErr)}`;
+    runtime.lastTtsAt = new Date().toISOString();
+    runtime.lastTtsProvider = 'falhou';
+    try { if (fs.existsSync(file)) fs.unlinkSync(file); } catch {}
+    throw new Error(runtime.lastTtsError);
   }
 }
 
@@ -760,7 +862,7 @@ function isExpectedBot(username) {
 function timerLine(req) {
   const base = publicBase(req);
   const key = encodeURIComponent(TIMER_KEY);
-  return `$(if $(customapi ${base}/should?key=${key}) $(ai $(customapi ${base}/prompt?key=${key})))`;
+  return `$(if $(customapi ${base}/should?key=${key}) $(customapi ${base}/say?key=${key}&text=$(queryescape $(ai $(customapi ${base}/prompt?key=${key})))))`;
 }
 
 function panelAuth(req, res, next) {
@@ -1021,11 +1123,17 @@ async function connectEventSub(url = 'wss://eventsub.wss.twitch.tv/ws') {
       const messageText = ev.message?.text || '';
       if (isExpectedBot(chatterLogin)) {
         const messageId = String(ev.message_id || '');
+        // Na v9 a resposta normal já passa por /say antes de chegar ao chat.
+        // EventSub fica apenas como fallback para mensagens do bot que não vieram do Timer v9.
+        if (wasDirectSpeechRecently(messageText)) {
+          runtime.lastSpokenMessageId = messageId || runtime.lastSpokenMessageId;
+          return;
+        }
         if (!messageId || runtime.lastSpokenMessageId !== messageId) {
           runtime.lastSpokenMessageId = messageId || `${chatterLogin}:${messageText}:${Date.now()}`;
           runtime.awaitingBotResponseUntil = 0;
           publishBotReply(messageText, {
-            source: chatterLogin === BOT_DISPLAY_NAME.toLowerCase() ? 'custom-bot' : 'streamelements',
+            source: chatterLogin === BOT_DISPLAY_NAME.toLowerCase() ? 'custom-bot-eventsub' : 'streamelements-eventsub',
             botName: ev.chatter_user_name || chatterLogin,
             twitchMessageId: messageId || null
           }).catch(err => console.error('[overlay reply]', err.message));
@@ -1186,6 +1294,20 @@ app.get('/should', timerAuth, (_req, res) => {
   return res.send('1');
 });
 
+app.get('/say', timerAuth, (req, res) => {
+  // O StreamElements chama esta rota com o RESULTADO do $(ai), já escapado por $(queryescape).
+  // Primeiro registramos/disparamos a fala; depois devolvemos o MESMO texto para ele publicar no chat.
+  const text = truncateUtf8(cleanSpeechText(req.query.text || ''), 390);
+  res.type('text/plain; charset=utf-8');
+  if (!text) return res.send('');
+  rememberDirectSpeech(text);
+  publishBotReply(text, {
+    source: 'timer-v9-direct',
+    botName: BOT_DISPLAY_NAME || 'StreamElements'
+  }).catch(err => console.error('[say/tts]', err.message));
+  return res.send(text);
+});
+
 app.get('/prompt', timerAuth, (_req, res) => {
   res.type('text/plain; charset=utf-8');
   const item = runtime.pending?.item || lockCandidate();
@@ -1230,6 +1352,7 @@ app.get('/api/status', panelAuth, (req, res) => {
     ttsFailures: runtime.ttsFailures,
     lastTtsError: runtime.lastTtsError,
     lastTtsAt: runtime.lastTtsAt,
+    lastTtsProvider: runtime.lastTtsProvider,
     lastSpokenReply: runtime.lastSpokenReply,
     overlayClients: overlayClients.size,
     suppressed: runtime.suppressed,

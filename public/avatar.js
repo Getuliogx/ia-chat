@@ -99,6 +99,52 @@ async function fetchAudioBlob(url) {
   return blob;
 }
 
+const femaleVoiceHints = [
+  'francisca','maria','thalita','fernanda','leticia','letícia','giovanna','vitoria','vitória','camila','luciana','carolina'
+];
+
+function getFemalePtBrVoice() {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices?.() || [];
+  const pt = voices.filter(v => /^pt(-|_)?br$/i.test(String(v.lang || '').replace('_','-')) || /^pt-BR$/i.test(String(v.lang || '')));
+  return pt.find(v => femaleVoiceHints.some(h => String(v.name || '').toLowerCase().includes(h))) || null;
+}
+
+function speakFemaleBrowserFallback(text) {
+  return new Promise(resolve => {
+    if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) return resolve(false);
+    const speak = () => {
+      const chosen = getFemalePtBrVoice();
+      if (!chosen) return resolve(false); // nunca escolhe uma voz desconhecida/masculina
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(String(text || ''));
+        u.voice = chosen;
+        u.lang = 'pt-BR';
+        u.rate = 1;
+        u.pitch = 1;
+        u.volume = 1;
+        u.onstart = () => { setSpeaking(true); startFallbackSpeechMotion(); };
+        u.onend = () => { stopMotion(); resolve(true); };
+        u.onerror = () => { stopMotion(); resolve(false); };
+        window.speechSynthesis.speak(u);
+      } catch { resolve(false); }
+    };
+    const voices = window.speechSynthesis.getVoices?.() || [];
+    if (voices.length) return speak();
+    const timer = setTimeout(speak, 500);
+    window.speechSynthesis.addEventListener?.('voiceschanged', () => { clearTimeout(timer); speak(); }, {once:true});
+  });
+}
+
+function startFallbackSpeechMotion() {
+  stopMotion();
+  motionTimer = setInterval(() => {
+    if (!busy) return setTalkLevel(0);
+    setTalkLevel(0.2 + Math.random() * 0.52);
+  }, 75);
+}
+
 async function playServerAudio(item) {
   if (!item.audioUrl || item.ttsEnabled === false) return false;
   try {
@@ -171,8 +217,12 @@ async function playItem(item) {
   setSpeaking(true);
 
   const played = await playServerAudio(item);
-  // Se o servidor não conseguiu gerar MP3, mantém só a animação; não usa voz masculina do navegador.
-  if (!played && !item.audioUrl) await waitForText(item.text);
+  if (!played) {
+    // Última reserva local: somente uma voz PT-BR de nome feminino conhecido.
+    // Nunca pega a primeira voz disponível, evitando voltar para voz masculina.
+    const browserSpoke = await speakFemaleBrowserFallback(item.text);
+    if (!browserSpoke) await waitForText(item.text);
+  }
 
   setSpeaking(false);
   busy = false;

@@ -124,7 +124,7 @@
 
         <article class="card">
           <h2>2. StreamElements — resposta da IA</h2>
-          <p>Não existe comando para o público. Crie um Timer no StreamElements e cole esta linha em <b>Response messages</b>:</p>
+          <p><b>IMPORTANTE V9:</b> substitua a linha antiga do Timer por esta. A resposta do $(ai) passa por /say, que dispara a voz e devolve o mesmo texto para o chat:</p>
           <textarea id="timerLine" rows="5" readonly></textarea>
           <button data-copy="timerLine">Copiar Timer</button>
           <div class="callout">
@@ -141,7 +141,7 @@
       <section class="grid">
         <article class="card">
           <h2>3. Avatar da IA — corpo + voz feminina</h2>
-          <p>O avatar recebe a resposta publicada pelo <b>icarolzinhabot</b> (ou StreamElements), fala com voz feminina e anima o corpo. Não exibe legenda.</p>
+          <p>A resposta da IA passa primeiro pelo servidor de voz e depois o mesmo texto é devolvido ao StreamElements para aparecer no chat. Assim texto e fala usam a mesma resposta. Não exibe legenda.</p>
           <label class="check"><input id="avatarEnabled" type="checkbox"> Mostrar corpo/avatar</label>
           <label class="check"><input id="ttsEnabled" type="checkbox"> Ativar voz TTS</label>
           <label>Imagem personalizada do corpo (opcional)<input id="avatarImageUrl" placeholder="https://.../avatar.png"></label>
