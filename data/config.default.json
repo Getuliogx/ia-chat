@@ -32,7 +32,7 @@
   "trolling": 34,
   "sweetness": 48,
   "seriousness": 24,
-  "profanity": 1,
+  "profanity": 4,
   "responseLength": "short",
   "mentionUser": true,
   "answerChance": 85,
@@ -75,5 +75,18 @@
   "localAiPort": 11435,
   "localAiMaxTokens": 96,
   "localAiTemperature": 78,
-  "localAiTimeoutSeconds": 60
+  "localAiTimeoutSeconds": 60,
+  "emotesEnabled": true,
+  "emoteChance": 72,
+  "emoteMaxCount": 1,
+  "emoteList": [
+    "Kappa",
+    "LUL",
+    "PogChamp",
+    "NotLikeThis",
+    "HeyGuys",
+    "BibleThump",
+    "4Head",
+    "CoolStoryBob"
+  ]
 }

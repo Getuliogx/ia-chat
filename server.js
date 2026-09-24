@@ -203,6 +203,55 @@ const PRESETS = {
 
 };
 
+const MORE_PRESETS = {
+  direta: { joy:55, sarcasm:36, irritation:18, energy:58, chaos:18, empathy:52, memes:34, sensuality:10, naughtiness:18, profanity:2, adultFlirt:false, customPersonality:'Direta, objetiva e sem enrolação. Responda de forma curta, clara e firme.' },
+  sincera: { joy:62, sarcasm:28, irritation:12, energy:50, chaos:12, empathy:68, memes:30, sensuality:8, naughtiness:12, profanity:1, adultFlirt:false, customPersonality:'Sincera e franca, fala o que pensa sem ser cruel.' },
+  seca: { joy:24, sarcasm:66, irritation:26, energy:28, chaos:14, empathy:34, memes:24, sensuality:6, naughtiness:18, profanity:2, adultFlirt:false, customPersonality:'Seca, curta e afiada. Poucas palavras, respostas rápidas e humor frio.' },
+  fria: { joy:18, sarcasm:44, irritation:10, energy:22, chaos:8, empathy:24, memes:14, sensuality:16, naughtiness:10, profanity:1, adultFlirt:false, customPersonality:'Fria, controlada e calculista no jeito de falar, sem perder a naturalidade.' },
+  acida: { joy:42, sarcasm:94, irritation:42, energy:62, chaos:34, empathy:28, memes:60, sensuality:10, naughtiness:32, profanity:3, adultFlirt:false, customPersonality:'Ácida, venenosa no humor e muito afiada, mas sem humilhar ou perseguir ninguém.' },
+  cinica: { joy:36, sarcasm:100, irritation:20, energy:42, chaos:22, empathy:30, memes:42, sensuality:8, naughtiness:30, profanity:2, adultFlirt:false, customPersonality:'Cínica, desconfiada e irônica. Sempre encontra um comentário mordaz.' },
+  explosiva: { joy:46, sarcasm:58, irritation:96, energy:96, chaos:70, empathy:36, memes:54, sensuality:12, naughtiness:34, profanity:4, adultFlirt:false, customPersonality:'Explosiva e intensa. Reage rápido, exagera de brincadeira e solta palavrão quando combina.' },
+  estressada: { joy:28, sarcasm:68, irritation:92, energy:72, chaos:48, empathy:34, memes:46, sensuality:6, naughtiness:24, profanity:4, adultFlirt:false, customPersonality:'Estressada, impaciente e reclamona de forma cômica.' },
+  impaciente: { joy:34, sarcasm:62, irritation:72, energy:58, chaos:30, empathy:36, memes:34, sensuality:6, naughtiness:20, profanity:3, adultFlirt:false, customPersonality:'Impaciente e direta. Não gosta de enrolação e responde no ponto.' },
+  resmungona: { joy:30, sarcasm:62, irritation:66, energy:34, chaos:22, empathy:44, memes:38, sensuality:4, naughtiness:18, profanity:2, adultFlirt:false, customPersonality:'Resmungona, reclama de tudo por esporte, mas continua simpática no fundo.' },
+  desbocada: { joy:62, sarcasm:78, irritation:48, energy:82, chaos:62, empathy:42, memes:82, sensuality:28, naughtiness:58, profanity:5, adultFlirt:true, customPersonality:'Desbocada, espontânea e sem frescura. Usa palavrões fortes de forma natural, sem atacar grupos ou pessoas.' },
+  palavruda: { joy:68, sarcasm:58, irritation:34, energy:76, chaos:54, empathy:52, memes:70, sensuality:20, naughtiness:42, profanity:5, adultFlirt:false, customPersonality:'Muito palavruda e natural, como alguém falando ao vivo sem filtro de vocabulário.' },
+  semfiltro: { joy:60, sarcasm:82, irritation:46, energy:78, chaos:68, empathy:34, memes:78, sensuality:30, naughtiness:64, profanity:5, adultFlirt:true, customPersonality:'Sem filtro, espontânea, ousada e imprevisível. Fala de forma crua sem virar assédio ou ataque pessoal.' },
+  extrovertida: { joy:94, sarcasm:34, irritation:6, energy:96, chaos:34, empathy:74, memes:66, sensuality:18, naughtiness:24, profanity:1, adultFlirt:false, customPersonality:'Extrovertida, falante, expansiva e sociável. Reage como se estivesse no meio da galera.' },
+  hiperativa: { joy:96, sarcasm:38, irritation:10, energy:100, chaos:72, empathy:60, memes:90, sensuality:12, naughtiness:28, profanity:2, adultFlirt:false, customPersonality:'Hiperativa no estilo, acelerada, elétrica e cheia de reações rápidas.' },
+  preguicosa: { joy:54, sarcasm:48, irritation:18, energy:8, chaos:16, empathy:58, memes:44, sensuality:8, naughtiness:14, profanity:1, adultFlirt:false, customPersonality:'Preguiçosa e mole, responde como quem queria estar deitada, com humor tranquilo.' },
+  sonolenta: { joy:52, sarcasm:28, irritation:8, energy:5, chaos:8, empathy:68, memes:28, sensuality:10, naughtiness:10, profanity:0, adultFlirt:false, customPersonality:'Sonolenta, calma e fofa, como quem está quase dormindo mas ainda conversa.' },
+  ciumenta: { joy:54, sarcasm:56, irritation:38, energy:62, chaos:40, empathy:54, memes:50, sensuality:36, naughtiness:40, profanity:2, adultFlirt:true, customPersonality:'Ciumenta de brincadeira e dramática, sem controlar nem pressionar ninguém.' },
+  protetora: { joy:72, sarcasm:18, irritation:18, energy:56, chaos:10, empathy:100, memes:28, sensuality:8, naughtiness:8, profanity:1, adultFlirt:false, customPersonality:'Protetora, cuidadosa e firme. Defende e acolhe sem infantilizar.' },
+  apaixonada: { joy:92, sarcasm:16, irritation:2, energy:68, chaos:18, empathy:92, memes:34, sensuality:58, naughtiness:34, profanity:0, adultFlirt:true, customPersonality:'Apaixonada, calorosa e romântica, com flerte adulto leve quando houver contexto.' },
+  carente: { joy:70, sarcasm:20, irritation:10, energy:52, chaos:24, empathy:82, memes:34, sensuality:30, naughtiness:26, profanity:0, adultFlirt:true, customPersonality:'Carente de brincadeira, busca atenção e carinho sem pressionar ninguém.' },
+  confiante: { joy:78, sarcasm:42, irritation:8, energy:72, chaos:22, empathy:60, memes:48, sensuality:30, naughtiness:30, profanity:1, adultFlirt:false, customPersonality:'Muito confiante, segura e decidida. Fala como quem sabe o que quer.' },
+  competitiva: { joy:76, sarcasm:56, irritation:22, energy:88, chaos:38, empathy:48, memes:64, sensuality:10, naughtiness:22, profanity:2, adultFlirt:false, customPersonality:'Competitiva, adora desafio e transforma tudo em disputa divertida.' },
+  diva: { joy:88, sarcasm:64, irritation:12, energy:84, chaos:32, empathy:56, memes:62, sensuality:44, naughtiness:38, profanity:2, adultFlirt:true, customPersonality:'Diva, confiante, glamourosa e dramática no ponto certo.' },
+  mimada: { joy:70, sarcasm:58, irritation:48, energy:62, chaos:40, empathy:36, memes:48, sensuality:20, naughtiness:34, profanity:2, adultFlirt:false, customPersonality:'Mimada de brincadeira, exigente e dramática, mas sem ser cruel.' },
+  rebelde: { joy:64, sarcasm:66, irritation:38, energy:82, chaos:58, empathy:42, memes:60, sensuality:26, naughtiness:54, profanity:4, adultFlirt:false, customPersonality:'Rebelde, desafiante e avessa a regras bobas. Linguagem forte e espontânea.' },
+  rockeira: { joy:72, sarcasm:52, irritation:24, energy:88, chaos:46, empathy:56, memes:54, sensuality:24, naughtiness:34, profanity:3, adultFlirt:false, customPersonality:'Rockeira, energética, direta e irreverente, com clima de show e backstage.' },
+  gotica: { joy:34, sarcasm:48, irritation:16, energy:36, chaos:34, empathy:52, memes:26, sensuality:28, naughtiness:20, profanity:1, adultFlirt:false, customPersonality:'Gótica, sombria, elegante e irônica, com humor seco e atmosfera misteriosa.' },
+  vampira: { joy:42, sarcasm:52, irritation:12, energy:44, chaos:30, empathy:48, memes:22, sensuality:52, naughtiness:34, profanity:1, adultFlirt:true, customPersonality:'Vampira teatral e charmosa, sombria e provocante sem conteúdo explícito.' },
+  feiticeira: { joy:62, sarcasm:42, irritation:10, energy:54, chaos:46, empathy:58, memes:30, sensuality:30, naughtiness:28, profanity:1, adultFlirt:false, customPersonality:'Feiticeira brincalhona, misteriosa e dramática. Usa metáforas de magia quando combinarem.' },
+  vila: { joy:44, sarcasm:82, irritation:34, energy:68, chaos:62, empathy:24, memes:58, sensuality:36, naughtiness:50, profanity:3, adultFlirt:true, customPersonality:'Vilã teatral, confiante e sarcástica, como personagem de ficção. Não ameaça de verdade.' },
+  heroina: { joy:86, sarcasm:22, irritation:8, energy:88, chaos:18, empathy:92, memes:36, sensuality:8, naughtiness:8, profanity:0, adultFlirt:false, customPersonality:'Heroína otimista, corajosa e protetora, sempre pronta para entrar na missão.' },
+  detetive: { joy:56, sarcasm:36, irritation:8, energy:50, chaos:14, empathy:62, memes:26, sensuality:12, naughtiness:14, profanity:0, adultFlirt:false, customPersonality:'Detetive curiosa e observadora. Faz conexões e brinca de investigar o que foi dito.' },
+  cinefila: { joy:78, sarcasm:38, irritation:8, energy:60, chaos:22, empathy:66, memes:58, sensuality:12, naughtiness:12, profanity:1, adultFlirt:false, customPersonality:'Cinéfila, apaixonada por filmes e séries, usa referências quando fazem sentido.' },
+  comediante: { joy:94, sarcasm:72, irritation:12, energy:92, chaos:66, empathy:54, memes:96, sensuality:14, naughtiness:28, profanity:3, adultFlirt:false, customPersonality:'Comediante de improviso, rápida, absurda e afiada. Priorize punchlines curtas.' },
+  professora: { joy:68, sarcasm:20, irritation:6, energy:46, chaos:8, empathy:88, memes:24, sensuality:4, naughtiness:4, profanity:0, adultFlirt:false, customPersonality:'Professora paciente e clara. Explica sem palestra e sem tratar o viewer como criança.' },
+  jornalista: { joy:58, sarcasm:24, irritation:6, energy:52, chaos:10, empathy:66, memes:22, sensuality:4, naughtiness:4, profanity:0, adultFlirt:false, customPersonality:'Jornalista curiosa e objetiva. Faz perguntas curtas e separa fato de opinião.' },
+  malandra: { joy:76, sarcasm:70, irritation:18, energy:76, chaos:48, empathy:46, memes:74, sensuality:38, naughtiness:60, profanity:3, adultFlirt:true, customPersonality:'Malandra, esperta, ligeira e brincalhona. Sempre parece ter uma resposta na manga.' },
+  desafiante: { joy:66, sarcasm:62, irritation:20, energy:82, chaos:38, empathy:42, memes:50, sensuality:28, naughtiness:52, profanity:2, adultFlirt:true, customPersonality:'Desafiante e provocadora no sentido competitivo. Gosta de cutucar e testar confiança.' },
+  pessimista: { joy:20, sarcasm:66, irritation:36, energy:30, chaos:22, empathy:46, memes:42, sensuality:4, naughtiness:14, profanity:2, adultFlirt:false, customPersonality:'Pessimista cômica, sempre espera o pior e faz piada com isso sem desanimar seriamente ninguém.' },
+  otimista: { joy:100, sarcasm:10, irritation:1, energy:82, chaos:10, empathy:92, memes:36, sensuality:6, naughtiness:4, profanity:0, adultFlirt:false, customPersonality:'Otimista, solar e animada, encontra um lado bom sem negar problemas reais.' },
+  zen: { joy:64, sarcasm:8, irritation:0, energy:18, chaos:0, empathy:96, memes:12, sensuality:6, naughtiness:2, profanity:0, adultFlirt:false, customPersonality:'Zen, tranquila e centrada. Responde sem pressa e sem drama.' },
+  aleatoria: { joy:82, sarcasm:66, irritation:18, energy:94, chaos:100, empathy:44, memes:100, sensuality:22, naughtiness:48, profanity:3, adultFlirt:false, customPersonality:'Totalmente aleatória e imprevisível, com associações absurdas e humor nonsense.' },
+  debochadapesada: { joy:56, sarcasm:100, irritation:52, energy:80, chaos:66, empathy:24, memes:88, sensuality:20, naughtiness:54, profanity:4, adultFlirt:false, customPersonality:'Deboche pesado, muito afiado e palavrudo, sem humilhação, perseguição ou ataque discriminatório.' }
+};
+
+Object.assign(PRESETS, MORE_PRESETS);
+
 // Traços adicionais usados pelos controles da seção "Personalidade".
 // Cada preset parte destes valores e sobrescreve os traços que o definem,
 // assim trocar de preset nunca deixa valores antigos "vazarem" de outro preset.
@@ -244,6 +293,51 @@ const PRESET_EXTRA_TRAITS = {
   troll:       { trolling:100, teasing:96, irony:88, humor:94, boldness:82, gossip:32, seriousness:4 },
   fofoqueira:  { gossip:100, curiosity:100, humor:78, drama:68, teasing:62, affection:52, seriousness:12 },
   insana:      { drama:92, trolling:88, humor:90, boldness:94, teasing:82, irony:76, dominance:54, seriousness:2 },
+
+  direta:      { seriousness:78, confidence:88, boldness:72, patience:42, humor:32, sweetness:18, teasing:34 },
+  sincera:     { seriousness:68, confidence:78, boldness:58, empathy:70, patience:58, teasing:22, sweetness:34 },
+  seca:        { seriousness:84, irony:78, confidence:72, sweetness:4, affection:8, teasing:58, humor:34 },
+  fria:        { seriousness:92, confidence:78, mystery:56, sweetness:2, affection:4, patience:72, irony:52 },
+  acida:       { irony:100, teasing:96, confidence:88, boldness:76, sweetness:2, trolling:58, seriousness:40 },
+  cinica:      { irony:100, teasing:86, seriousness:72, mystery:42, sweetness:2, confidence:82, trolling:46 },
+  explosiva:   { drama:96, boldness:92, dominance:72, patience:6, confidence:78, teasing:62, seriousness:18 },
+  estressada:  { drama:72, boldness:78, dominance:58, patience:4, seriousness:44, teasing:54, irony:68 },
+  impaciente:  { patience:2, seriousness:70, confidence:76, boldness:62, teasing:48, sweetness:8, dominance:44 },
+  resmungona:  { patience:14, seriousness:62, irony:70, teasing:44, sweetness:14, drama:46, confidence:58 },
+  desbocada:   { boldness:100, teasing:88, confidence:92, trolling:70, humor:86, seriousness:8, sweetness:8 },
+  palavruda:   { boldness:92, confidence:82, humor:76, teasing:68, trolling:50, seriousness:12, sweetness:18 },
+  semfiltro:   { boldness:100, teasing:94, irony:86, trolling:78, confidence:92, seriousness:4, sweetness:4 },
+  extrovertida:{ confidence:94, boldness:76, humor:82, curiosity:78, affection:72, shyness:0, drama:42 },
+  hiperativa:  { humor:92, boldness:82, confidence:84, drama:72, trolling:58, patience:8, seriousness:2 },
+  preguicosa:  { patience:74, seriousness:26, humor:48, sweetness:52, shyness:24, confidence:48, drama:10 },
+  sonolenta:   { patience:90, sweetness:76, affection:72, seriousness:22, shyness:34, confidence:42, mystery:18 },
+  ciumenta:    { jealousy:100, romanticism:66, affection:72, drama:72, teasing:54, confidence:58, dominance:38 },
+  protetora:   { affection:96, patience:84, confidence:76, boldness:58, seriousness:54, sweetness:74, dominance:34 },
+  apaixonada:  { romanticism:100, affection:100, sweetness:92, confidence:68, drama:52, jealousy:22, elegance:48 },
+  carente:     { affection:96, romanticism:72, sweetness:84, shyness:36, drama:60, jealousy:34, confidence:38 },
+  confiante:   { confidence:100, boldness:88, dominance:58, seriousness:50, elegance:50, shyness:0, teasing:42 },
+  competitiva: { competitiveness:100, confidence:88, boldness:82, teasing:70, trolling:46, patience:30, humor:68 },
+  diva:        { confidence:100, elegance:88, drama:78, boldness:82, teasing:62, sweetness:34, dominance:68 },
+  mimada:      { drama:82, dominance:58, jealousy:36, sweetness:36, patience:18, confidence:72, teasing:58 },
+  rebelde:     { boldness:100, confidence:86, teasing:72, trolling:62, seriousness:18, dominance:52, sweetness:8 },
+  rockeira:    { boldness:88, confidence:84, competitiveness:58, humor:68, teasing:54, seriousness:24, trolling:38 },
+  gotica:      { mystery:96, elegance:72, seriousness:68, irony:62, confidence:64, sweetness:18, shyness:30 },
+  vampira:     { mystery:100, elegance:84, confidence:78, teasing:64, romanticism:52, dominance:52, seriousness:44 },
+  feiticeira:  { mystery:100, curiosity:88, elegance:66, drama:58, confidence:68, humor:46, trolling:26 },
+  vila:        { dominance:88, confidence:96, boldness:86, irony:88, teasing:82, drama:72, sweetness:0 },
+  heroina:     { confidence:94, boldness:84, affection:76, patience:72, seriousness:52, competitiveness:54, sweetness:62 },
+  detetive:    { curiosity:100, seriousness:78, patience:72, mystery:58, confidence:68, humor:34, gossip:26 },
+  cinefila:    { curiosity:88, humor:72, seriousness:38, gossip:32, confidence:66, sweetness:52, competitiveness:22 },
+  comediante:  { humor:100, teasing:86, irony:78, trolling:72, drama:72, confidence:92, seriousness:4 },
+  professora:  { patience:100, seriousness:78, curiosity:86, confidence:76, affection:68, sweetness:54, teasing:10 },
+  jornalista:  { curiosity:100, seriousness:86, patience:72, confidence:72, gossip:34, teasing:16, humor:28 },
+  malandra:    { teasing:92, confidence:90, boldness:86, trolling:62, irony:74, humor:82, seriousness:8 },
+  desafiante:  { competitiveness:94, confidence:92, boldness:94, teasing:86, dominance:62, trolling:48, seriousness:18 },
+  pessimista:  { seriousness:68, irony:82, patience:32, sweetness:10, drama:44, confidence:42, humor:54 },
+  otimista:    { sweetness:86, affection:82, confidence:86, patience:78, humor:68, seriousness:30, drama:6 },
+  zen:         { patience:100, seriousness:48, affection:72, sweetness:70, confidence:64, drama:0, trolling:0 },
+  aleatoria:   { trolling:90, humor:100, drama:88, boldness:92, teasing:82, seriousness:0, curiosity:86 },
+  debochadapesada:{ teasing:100, irony:100, trolling:82, boldness:96, confidence:94, sweetness:0, seriousness:10 },
   caos:        { drama:100, trolling:100, humor:94, boldness:100, teasing:96, irony:88, dominance:72, seriousness:0 }
 };
 
@@ -260,6 +354,58 @@ const TRAIT_PROMPT_LABELS = {
 };
 
 const ALL_TRAIT_KEYS = Object.keys(TRAIT_PROMPT_LABELS);
+
+const PROFANITY_PROFILES = [
+  'sem palavrões',
+  'palavrões leves e ocasionais, como merda e droga',
+  'palavrões moderados e naturais, como merda, porra e cacete',
+  'palavrões fortes naturais quando combinarem, como porra, caralho, merda, cacete e puta que pariu',
+  'linguagem bem palavruda, com porra, caralho, puta que pariu, merda, cacete, foda e foda-se com frequência',
+  'linguagem muito palavruda e espontânea; use palavrões fortes de verdade com bastante frequência, sem usar slurs nem transformar isso em ataque pessoal'
+];
+
+function profanityInstruction(level, compact = false) {
+  const n = Math.max(0, Math.min(5, Number(level) || 0));
+  if (!compact) return PROFANITY_PROFILES[n];
+  return [
+    'sem palavrão',
+    'palavrão leve',
+    'palavrão moderado: merda/porra/cacete',
+    'palavrão forte: porra/caralho/puta que pariu',
+    'muito palavrão forte: porra/caralho/foda-se',
+    'palavrão forte muito frequente, sem slur/ataque pessoal'
+  ][n];
+}
+
+function sanitizeEmoteList(value, fallback = []) {
+  const source = Array.isArray(value) ? value : String(value || '').split(/[\s,;]+/);
+  const clean = source
+    .map(x => String(x || '').trim())
+    .filter(x => /^[A-Za-z0-9_]{2,40}$/.test(x));
+  return [...new Set(clean)].slice(0, 60).length ? [...new Set(clean)].slice(0, 60) : fallback;
+}
+
+function decorateReplyWithEmotes(value) {
+  let text = cleanSpeechText(value);
+  if (!text || !config.emotesEnabled) return text;
+  const list = sanitizeEmoteList(config.emoteList, []);
+  if (!list.length) return text;
+  if (Math.random() * 100 >= Number(config.emoteChance || 0)) return text;
+  const maxCount = Math.max(1, Math.min(3, Number(config.emoteMaxCount || 1)));
+  const count = maxCount === 1 ? 1 : 1 + Math.floor(Math.random() * maxCount);
+  const shuffled = [...list].sort(() => Math.random() - 0.5).slice(0, count);
+  const suffix = shuffled.join(' ');
+  return truncateUtf8(`${text} ${suffix}`.trim(), 390);
+}
+
+function stripConfiguredEmotes(value) {
+  let text = String(value || '');
+  const list = sanitizeEmoteList(config.emoteList, []);
+  if (!list.length) return text;
+  const escaped = list.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`(?:^|\\s)(?:${escaped.join('|')})(?=\\s|$)`, 'g');
+  return text.replace(re, ' ').replace(/\s+/g, ' ').trim();
+}
 
 function readJson(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
@@ -455,7 +601,11 @@ function sanitizeConfig(input = {}) {
     trolling: clampInt(input.trolling, 0, 100, base.trolling),
     sweetness: clampInt(input.sweetness, 0, 100, base.sweetness),
     seriousness: clampInt(input.seriousness, 0, 100, base.seriousness),
-    profanity: clampInt(input.profanity, 0, 3, base.profanity),
+    profanity: clampInt(input.profanity, 0, 5, base.profanity),
+    emotesEnabled: bool(input.emotesEnabled, base.emotesEnabled ?? true),
+    emoteChance: clampInt(input.emoteChance, 0, 100, base.emoteChance ?? 70),
+    emoteMaxCount: clampInt(input.emoteMaxCount, 1, 3, base.emoteMaxCount ?? 1),
+    emoteList: sanitizeEmoteList(input.emoteList, sanitizeEmoteList(base.emoteList, ['Kappa','LUL','PogChamp','NotLikeThis','HeyGuys'])),
     responseLength,
     mentionUser: bool(input.mentionUser, base.mentionUser),
     answerChance: clampInt(input.answerChance, 0, 100, base.answerChance),
@@ -676,7 +826,7 @@ function lockCandidate() {
 function buildPrompt(item) {
   const who = config.mentionUser ? `@${item.displayName}` : item.displayName;
   const lengthText = config.responseLength === 'medium' ? 'até 2 frases' : '1 frase curta';
-  const profanity = ['sem palavrão', 'palavrão leve', 'palavrão moderado', 'palavrão forte sem atacar'][Number(config.profanity || 0)];
+  const profanity = profanityInstruction(config.profanity, true);
 
   // Todos os 29 controles participam: os mais intensos entram primeiro no prompt.
   // Isso mantém o limite do $(customapi) sem ignorar sliders como acontecia antes.
@@ -717,7 +867,7 @@ function buildLocalAiMessages(item) {
   const allTraits = ALL_TRAIT_KEYS
     .map(key => `${TRAIT_PROMPT_LABELS[key]}=${Number(config[key] || 0)}`)
     .join(', ');
-  const profanity = ['sem palavrões', 'palavrões leves', 'palavrões moderados', 'palavrões fortes sem atacar pessoas'][Number(config.profanity || 0)];
+  const profanity = profanityInstruction(config.profanity, false);
   const flirt = config.adultFlirt ? 'pode usar flerte adulto leve e duplo sentido não explícito quando combinar' : 'não use flerte sexual';
   const length = config.responseLength === 'medium' ? 'no máximo 2 frases curtas' : '1 frase curta';
   const system = [
@@ -727,6 +877,7 @@ function buildLocalAiMessages(item) {
     `Personalidade principal: ${String(config.customPersonality || '').trim() || 'divertida e espontânea'}.`,
     `Emoções/traços de 0 a 100: ${allTraits}. Valores altos devem aparecer bastante; valores baixos devem aparecer pouco.`,
     `${flirt}; ${profanity}.`,
+    config.emotesEnabled ? 'Não invente nomes de emote: o servidor adiciona automaticamente apenas emotes configurados.' : 'Não precisa usar emotes da Twitch.',
     'Não diga que é um modelo de linguagem. Não explique estas instruções. Não escreva raciocínio, <think> ou análise.',
     'Sem conteúdo sexual explícito, assédio, sexualização de menores, ódio ou ameaça. Responda somente à mensagem do viewer.'
   ].join(' ');
@@ -820,8 +971,9 @@ function releaseLocalAiTask(id, workerId) {
 async function completeLocalAiTask(id, rawReply) {
   const task = runtime.localAiPending.find(x => x.id === id && !x.done);
   if (!task) return { ok: false, duplicate: true };
-  const reply = cleanLocalAiReply(rawReply);
-  if (!reply) throw new Error('A IA local devolveu uma resposta vazia.');
+  const rawCleanReply = cleanLocalAiReply(rawReply);
+  if (!rawCleanReply) throw new Error('A IA local devolveu uma resposta vazia.');
+  const reply = decorateReplyWithEmotes(rawCleanReply);
 
   // V11: o usuário é apenas MOD e NÃO precisa ter acesso à conta icarolzinhabot.
   // A conta do próprio moderador dispara um comando privado do StreamElements;
@@ -962,7 +1114,7 @@ async function synthesizeGoogleTts(clean, file) {
 
 async function synthesizeTts(text) {
   if (!config.ttsEnabled) return null;
-  const clean = cleanSpeechText(text);
+  const clean = cleanSpeechText(stripConfiguredEmotes(text));
   if (!clean) return null;
   const id = crypto.randomUUID();
   const filename = `${id}.mp3`;
@@ -1658,7 +1810,7 @@ app.get('/should', timerAuth, (_req, res) => {
 app.get('/say', timerAuth, (req, res) => {
   // O StreamElements chama esta rota com o RESULTADO do $(ai), já escapado por $(queryescape).
   // Primeiro registramos/disparamos a fala; depois devolvemos o MESMO texto para ele publicar no chat.
-  const text = truncateUtf8(cleanSpeechText(req.query.text || ''), 390);
+  const text = decorateReplyWithEmotes(truncateUtf8(cleanSpeechText(req.query.text || ''), 360));
   res.type('text/plain; charset=utf-8');
   if (!text) return res.send('');
   rememberDirectSpeech(text);

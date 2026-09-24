@@ -30,7 +30,9 @@
     <div id="app" class="hidden">
       <section class="toolbar card">
         <label class="switch-line"><input id="enabled" type="checkbox"><span class="switch"></span><strong>IA automática</strong></label>
-        <div class="preset-buttons">
+        <div class="preset-area">
+          <div class="preset-tools"><input id="presetSearch" placeholder="Buscar personalidade..."><span id="presetCount"></span></div>
+          <div class="preset-buttons">
           <button data-preset="suave">😇 Suave</button>
           <button data-preset="normal">🙂 Normal</button>
           <button data-preset="fofa">🥰 Fofa</button>
@@ -62,6 +64,52 @@
           <button data-preset="fofoqueira">🗣️ Fofoqueira</button>
           <button data-preset="insana">🤪 Insana</button>
           <button data-preset="caos" class="danger">💀 Caos Pesado</button>
+
+          <button data-preset="direta">🎯 Direta</button>
+          <button data-preset="sincera">🗣️ Sincera</button>
+          <button data-preset="seca">🧊 Seca</button>
+          <button data-preset="fria">❄️ Fria</button>
+          <button data-preset="acida" class="danger">🍋 Ácida</button>
+          <button data-preset="cinica">😏 Cínica</button>
+          <button data-preset="explosiva" class="danger">💣 Explosiva</button>
+          <button data-preset="estressada" class="danger">🤬 Estressada</button>
+          <button data-preset="impaciente">⏱️ Impaciente</button>
+          <button data-preset="resmungona">😮‍💨 Resmungona</button>
+          <button data-preset="desbocada" class="danger">🗯️ Desbocada</button>
+          <button data-preset="palavruda" class="danger">🤬 Palavruda</button>
+          <button data-preset="semfiltro" class="danger">🚫 Sem filtro</button>
+          <button data-preset="extrovertida">🎉 Extrovertida</button>
+          <button data-preset="hiperativa">⚡ Hiperativa</button>
+          <button data-preset="preguicosa">🛋️ Preguiçosa</button>
+          <button data-preset="sonolenta">😴 Sonolenta</button>
+          <button data-preset="ciumenta">💚 Ciumenta</button>
+          <button data-preset="protetora">🛡️ Protetora</button>
+          <button data-preset="apaixonada" class="sensual">💘 Apaixonada</button>
+          <button data-preset="carente">🥺 Carente</button>
+          <button data-preset="confiante">😎 Confiante</button>
+          <button data-preset="competitiva">🏆 Competitiva</button>
+          <button data-preset="diva" class="sensual">💅 Diva</button>
+          <button data-preset="mimada">👸 Mimada</button>
+          <button data-preset="rebelde" class="danger">🤘 Rebelde</button>
+          <button data-preset="rockeira">🎸 Rockeira</button>
+          <button data-preset="gotica">🖤 Gótica</button>
+          <button data-preset="vampira" class="sensual">🧛‍♀️ Vampira</button>
+          <button data-preset="feiticeira">🪄 Feiticeira</button>
+          <button data-preset="vila" class="danger">😈 Vilã</button>
+          <button data-preset="heroina">🦸‍♀️ Heroína</button>
+          <button data-preset="detetive">🕵️ Detetive</button>
+          <button data-preset="cinefila">🎬 Cinéfila</button>
+          <button data-preset="comediante">🎤 Comediante</button>
+          <button data-preset="professora">📚 Professora</button>
+          <button data-preset="jornalista">📰 Jornalista</button>
+          <button data-preset="malandra">🃏 Malandra</button>
+          <button data-preset="desafiante">🥊 Desafiante</button>
+          <button data-preset="pessimista">🌧️ Pessimista</button>
+          <button data-preset="otimista">☀️ Otimista</button>
+          <button data-preset="zen">🧘 Zen</button>
+          <button data-preset="aleatoria" class="danger">🎲 Aleatória</button>
+          <button data-preset="debochadapesada" class="danger">🔥 Debochada pesada</button>
+          </div>
         </div>
       </section>
 
@@ -77,10 +125,20 @@
           <p class="hint">Todos os controles abaixo entram no comportamento da IA. Os presets também ajustam esses traços.</p>
           <div id="sliders"></div>
           <div class="two">
-            <label>Palavrões<select id="profanity"><option value="0">Desligado</option><option value="1">Leve</option><option value="2">Médio</option><option value="3">Alto</option></select></label>
+            <label>Palavrões<select id="profanity"><option value="0">Desligado</option><option value="1">Leve</option><option value="2">Médio</option><option value="3">Alto</option><option value="4">Pesado</option><option value="5">Muito pesado</option></select></label>
             <label class="check padded"><input id="adultFlirt" type="checkbox"> Flerte adulto / duplo sentido leve</label>
           </div>
           <label class="check"><input id="mentionUser" type="checkbox"> Marcar usuário com @</label>
+          <div class="emote-box">
+            <h3>Emotes da Twitch</h3>
+            <label class="check"><input id="emotesEnabled" type="checkbox"> Usar emotes nas respostas</label>
+            <div class="range-line"><label>Chance de usar emote</label><output id="emoteChanceOut"></output></div>
+            <input id="emoteChance" type="range" min="0" max="100">
+            <label>Máximo por resposta<select id="emoteMaxCount"><option value="1">1 emote</option><option value="2">Até 2 emotes</option><option value="3">Até 3 emotes</option></select></label>
+            <label>Lista de emotes<textarea id="emoteList" rows="4" placeholder="Kappa&#10;LUL&#10;PogChamp"></textarea></label>
+            <p class="hint">Use os nomes exatos dos emotes disponíveis no chat. O servidor acrescenta os emotes de verdade na mensagem; a voz não lê os nomes dos emotes.</p>
+          </div>
+
           <p class="hint warning">Sensual/Safadinha = provocação e duplo sentido não explícitos. O sistema instrui a IA a não gerar sexo explícito, assédio ou sexualização de menores.</p>
         </article>
 

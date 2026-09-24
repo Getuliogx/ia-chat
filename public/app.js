@@ -36,6 +36,26 @@ const sliderDefs = [
   ['seriousness','🧐 Seriedade']
 ];
 
+
+function setupPresetSearch() {
+  const input = $('presetSearch');
+  if (!input) return;
+  const buttons = [...document.querySelectorAll('[data-preset]')];
+  const count = $('presetCount');
+  const update = () => {
+    const q = input.value.trim().toLocaleLowerCase('pt-BR');
+    let visible = 0;
+    for (const button of buttons) {
+      const ok = !q || button.textContent.toLocaleLowerCase('pt-BR').includes(q) || button.dataset.preset.toLowerCase().includes(q);
+      button.classList.toggle('hidden', !ok);
+      if (ok) visible++;
+    }
+    if (count) count.textContent = `${visible}/${buttons.length}`;
+  };
+  input.addEventListener('input', update);
+  update();
+}
+
 function authHeaders(extra={}) { return { 'X-Panel-Key': key, ...extra }; }
 async function api(url, options={}) {
   options.headers = authHeaders(options.headers || {});
@@ -59,7 +79,7 @@ function makeSliders() {
 function fill(c) {
   cfg = c;
   const ids = [
-    'enabled','aiName','responseLength','profanity','adultFlirt','mentionUser','answerChance',
+    'enabled','aiName','responseLength','profanity','adultFlirt','mentionUser','answerChance','emotesEnabled','emoteChance','emoteMaxCount',
     'cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ignoreCommands',
     'ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','customPersonality',
     'avatarEnabled','avatarImageUrl','ttsEnabled','ttsVoice','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds',
@@ -74,18 +94,21 @@ function fill(c) {
     $(id+'Out').textContent = c[id];
   }
   $('answerChanceOut').textContent = `${c.answerChance}%`;
+  if ($('emoteChanceOut')) $('emoteChanceOut').textContent = `${c.emoteChance ?? 70}%`;
+  if ($('emoteList')) $('emoteList').value = (c.emoteList || []).join('\n');
   $('ignoreUsers').value = (c.ignoreUsers || []).join('\n');
 }
 
 function collect() {
   const out = { ...cfg };
-  ['enabled','adultFlirt','mentionUser','ignoreCommands','ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','avatarEnabled','ttsEnabled','localAiEnabled','localAiMentionOnly']
+  ['enabled','adultFlirt','mentionUser','emotesEnabled','ignoreCommands','ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','avatarEnabled','ttsEnabled','localAiEnabled','localAiMentionOnly']
     .forEach(id => out[id] = $(id).checked);
   ['aiName','responseLength','customPersonality','avatarImageUrl','ttsVoice'].forEach(id => out[id] = $(id).value);
-  ['profanity','answerChance','cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds','localAiPort','localAiMaxTokens','localAiTemperature','localAiTimeoutSeconds']
+  ['profanity','emoteChance','emoteMaxCount','answerChance','cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds','localAiPort','localAiMaxTokens','localAiTemperature','localAiTimeoutSeconds']
     .forEach(id => out[id] = Number($(id).value));
   sliderDefs.forEach(([id]) => out[id] = Number($(id).value));
   out.ignoreUsers = $('ignoreUsers').value.split(/\n|,/).map(s => s.trim()).filter(Boolean);
+  out.emoteList = $('emoteList').value.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
   return out;
 }
 
@@ -382,11 +405,13 @@ async function copyFrom(id, button) {
 }
 
 makeSliders();
+setupPresetSearch();
 $('panelKey').value = key;
 $('loginBtn').addEventListener('click', login);
 $('panelKey').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 $('saveBtn').addEventListener('click', save);
 $('answerChance').addEventListener('input', e => $('answerChanceOut').textContent = e.target.value+'%');
+if ($('emoteChance')) $('emoteChance').addEventListener('input', e => $('emoteChanceOut').textContent = e.target.value+'%');
 document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.preset)));
 document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => copyFrom(b.dataset.copy, b)));
 $('simulateBtn').addEventListener('click', simulate);
