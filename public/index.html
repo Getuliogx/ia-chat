@@ -31,6 +31,7 @@
       <section class="toolbar card">
         <label class="switch-line"><input id="enabled" type="checkbox"><span class="switch"></span><strong>IA automática</strong></label>
         <div class="preset-area">
+          <h3 class="preset-title">Personalidades prontas — 75 opções</h3>
           <div class="preset-tools"><input id="presetSearch" placeholder="Buscar personalidade..."><span id="presetCount"></span></div>
           <div class="preset-buttons">
           <button data-preset="suave">😇 Suave</button>
@@ -121,23 +122,26 @@
             <label>Tamanho<select id="responseLength"><option value="short">Curta</option><option value="medium">Média</option></select></label>
           </div>
           <label>Personalidade personalizada<textarea id="customPersonality" rows="3" maxlength="220"></textarea></label>
-          <h3 class="traits-title">Traços da personalidade — 29 controles</h3>
-          <p class="hint">Todos os controles abaixo entram no comportamento da IA. Os presets também ajustam esses traços.</p>
+          <div class="language-box">
+            <h3>🤬 Palavrões reais + emotes da Twitch</h3>
+            <div class="two">
+              <label>Intensidade dos palavrões<select id="profanity"><option value="0">0 — Desligado</option><option value="1">1 — Leve: droga / merda</option><option value="2">2 — Médio: merda / porra / cacete</option><option value="3">3 — Forte: porra / caralho / puta que pariu</option><option value="4">4 — Pesado: caralho / foda / foda-se</option><option value="5">5 — Sem filtro: palavrão forte muito frequente</option></select></label>
+              <label class="check padded"><input id="adultFlirt" type="checkbox"> Flerte adulto / duplo sentido leve</label>
+            </div>
+            <label class="check"><input id="mentionUser" type="checkbox"> Marcar usuário com @</label>
+            <div class="emote-box">
+              <h3>😄 Emotes da Twitch</h3>
+              <label class="check"><input id="emotesEnabled" type="checkbox"> Usar emotes nas respostas</label>
+              <div class="range-line"><label>Chance de usar emote</label><output id="emoteChanceOut"></output></div>
+              <input id="emoteChance" type="range" min="0" max="100">
+              <label>Máximo por resposta<select id="emoteMaxCount"><option value="1">1 emote</option><option value="2">Até 2 emotes</option><option value="3">Até 3 emotes</option></select></label>
+              <label>Lista de emotes<textarea id="emoteList" rows="4" placeholder="Kappa&#10;LUL&#10;HeyGuys"></textarea></label>
+              <p class="hint">Coloque os nomes exatos dos emotes disponíveis no chat. O texto enviado ao Twitch inclui esses nomes; emotes reconhecidos pelo chat são renderizados normalmente. A voz remove os nomes configurados antes de falar.</p>
+            </div>
+          </div>
+          <h3 class="traits-title">Traços da personalidade — 75 controles</h3>
+          <p class="hint">Agora são 75 controles reais. Todos entram no perfil da IA; os presets também ajustam os traços.</p>
           <div id="sliders"></div>
-          <div class="two">
-            <label>Palavrões<select id="profanity"><option value="0">Desligado</option><option value="1">Leve</option><option value="2">Médio</option><option value="3">Alto</option><option value="4">Pesado</option><option value="5">Muito pesado</option></select></label>
-            <label class="check padded"><input id="adultFlirt" type="checkbox"> Flerte adulto / duplo sentido leve</label>
-          </div>
-          <label class="check"><input id="mentionUser" type="checkbox"> Marcar usuário com @</label>
-          <div class="emote-box">
-            <h3>Emotes da Twitch</h3>
-            <label class="check"><input id="emotesEnabled" type="checkbox"> Usar emotes nas respostas</label>
-            <div class="range-line"><label>Chance de usar emote</label><output id="emoteChanceOut"></output></div>
-            <input id="emoteChance" type="range" min="0" max="100">
-            <label>Máximo por resposta<select id="emoteMaxCount"><option value="1">1 emote</option><option value="2">Até 2 emotes</option><option value="3">Até 3 emotes</option></select></label>
-            <label>Lista de emotes<textarea id="emoteList" rows="4" placeholder="Kappa&#10;LUL&#10;PogChamp"></textarea></label>
-            <p class="hint">Use os nomes exatos dos emotes disponíveis no chat. O servidor acrescenta os emotes de verdade na mensagem; a voz não lê os nomes dos emotes.</p>
-          </div>
 
           <p class="hint warning">Sensual/Safadinha = provocação e duplo sentido não explícitos. O sistema instrui a IA a não gerar sexo explícito, assédio ou sexualização de menores.</p>
         </article>

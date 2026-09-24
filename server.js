@@ -345,12 +345,79 @@ for (const [presetName, preset] of Object.entries(PRESETS)) {
   Object.assign(preset, EXTRA_TRAIT_DEFAULTS, PRESET_EXTRA_TRAITS[presetName] || {});
 }
 
+function clampTrait(value) {
+  return Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+}
+
+function deriveAdvancedTraits(p) {
+  const avg = (...xs) => clampTrait(xs.reduce((a, b) => a + Number(b || 0), 0) / Math.max(1, xs.length));
+  return {
+    spontaneity: avg(p.energy, p.chaos, p.boldness),
+    directness: avg(p.seriousness, p.confidence, p.boldness),
+    provocation: avg(p.teasing, p.naughtiness, p.boldness),
+    playfulness: avg(p.humor, p.memes, p.teasing),
+    impulsiveness: avg(p.chaos, p.energy, 100 - Number(p.patience || 0)),
+    creativity: avg(p.curiosity, p.humor, p.chaos),
+    wittiness: avg(p.irony, p.humor, p.sarcasm),
+    charm: avg(p.elegance, p.confidence, p.sensuality),
+    warmth: avg(p.empathy, p.affection, p.sweetness),
+    loyalty: avg(p.affection, p.empathy, p.seriousness),
+    protectiveness: avg(p.empathy, p.affection, p.boldness),
+    optimism: avg(p.joy, p.confidence, p.sweetness),
+    pessimism: clampTrait((Number(p.irritation || 0) + Number(p.seriousness || 0) + (100 - Number(p.joy || 0))) / 3),
+    cynicism: avg(p.sarcasm, p.irony, p.seriousness),
+    eccentricity: avg(p.chaos, p.trolling, p.humor),
+    suspicion: avg(p.mystery, p.seriousness, p.jealousy),
+    brattiness: avg(p.drama, p.dominance, p.jealousy),
+    rebelliousness: avg(p.boldness, p.trolling, p.chaos),
+    stubbornness: avg(p.dominance, p.seriousness, 100 - Number(p.patience || 0)),
+    arrogance: clampTrait((Number(p.confidence || 0) + Number(p.dominance || 0) + Number(p.boldness || 0) - Number(p.empathy || 0) / 2) / 2.5),
+    humility: clampTrait((Number(p.empathy || 0) + Number(p.sweetness || 0) + (100 - Number(p.dominance || 0))) / 3),
+    discipline: avg(p.seriousness, p.patience, 100 - Number(p.chaos || 0)),
+    calmness: clampTrait((Number(p.patience || 0) + (100 - Number(p.energy || 0)) + (100 - Number(p.irritation || 0))) / 3),
+    enthusiasm: avg(p.joy, p.energy, p.confidence),
+    nostalgia: avg(p.romanticism, p.mystery, p.sweetness),
+    nerdiness: avg(p.curiosity, p.seriousness, p.memes),
+    gamerSpirit: avg(p.competitiveness, p.memes, p.energy),
+    gothicMood: clampTrait((Number(p.mystery || 0) + Number(p.seriousness || 0) + Number(p.irony || 0) + (100 - Number(p.joy || 0))) / 4),
+    villainy: clampTrait((Number(p.dominance || 0) + Number(p.irony || 0) + Number(p.teasing || 0) + Number(p.boldness || 0) - Number(p.empathy || 0) / 2) / 3.5),
+    heroism: avg(p.empathy, p.boldness, p.confidence, p.affection),
+    foulMouth: clampTrait(Number(p.profanity || 0) * 20),
+    assertiveness: avg(p.confidence, p.boldness, p.seriousness),
+    friendliness: avg(p.joy, p.empathy, p.affection, p.sweetness),
+    generosity: avg(p.empathy, p.affection, p.sweetness, p.patience),
+    sensitivity: avg(p.empathy, p.romanticism, p.affection, p.jealousy),
+    determination: avg(p.confidence, p.boldness, p.seriousness, 100 - Number(p.patience || 0) / 2),
+    ambition: avg(p.confidence, p.competitiveness, p.boldness, p.dominance),
+    adventurousness: avg(p.curiosity, p.boldness, p.energy, p.chaos),
+    independence: clampTrait((Number(p.confidence || 0) + Number(p.boldness || 0) + (100 - Number(p.shyness || 0)) + (100 - Number(p.jealousy || 0))) / 4),
+    diplomacy: clampTrait((Number(p.empathy || 0) + Number(p.patience || 0) + Number(p.elegance || 0) + (100 - Number(p.irritation || 0))) / 4),
+    leadership: avg(p.confidence, p.dominance, p.boldness, p.seriousness),
+    expressiveness: avg(p.energy, p.drama, p.humor, p.affection),
+    irreverence: avg(p.humor, p.teasing, p.trolling, p.chaos),
+    resilience: clampTrait((Number(p.confidence || 0) + Number(p.patience || 0) + (100 - Number(p.irritation || 0)) + Number(p.boldness || 0)) / 4),
+    perfectionism: avg(p.seriousness, p.patience, p.patience, 100 - Number(p.chaos || 0)),
+    streetSmarts: avg(p.irony, p.teasing, p.confidence, p.curiosity)
+  };
+}
+
+for (const preset of Object.values(PRESETS)) Object.assign(preset, deriveAdvancedTraits(preset));
+
 const TRAIT_PROMPT_LABELS = {
   joy:'alegre', sarcasm:'sarcástica', irritation:'irritada', energy:'energética', chaos:'caótica', empathy:'empática',
   memes:'memes', sensuality:'sensual', naughtiness:'atrevida', affection:'carinhosa', shyness:'tímida',
   romanticism:'romântica', humor:'engraçada', teasing:'debochada', irony:'irônica', drama:'dramática', jealousy:'ciumenta',
   curiosity:'curiosa', patience:'paciente', confidence:'confiante', boldness:'ousada', dominance:'mandona', mystery:'misteriosa',
-  elegance:'elegante', competitiveness:'competitiva', gossip:'fofoqueira', trolling:'troll', sweetness:'doce', seriousness:'séria'
+  elegance:'elegante', competitiveness:'competitiva', gossip:'fofoqueira', trolling:'troll', sweetness:'doce', seriousness:'séria',
+  spontaneity:'espontânea', directness:'direta', provocation:'provocadora', playfulness:'brincalhona', impulsiveness:'impulsiva',
+  creativity:'criativa', wittiness:'sagaz', charm:'charmosa', warmth:'acolhedora', loyalty:'leal', protectiveness:'protetora',
+  optimism:'otimista', pessimism:'pessimista', cynicism:'cínica', eccentricity:'excêntrica', suspicion:'desconfiada',
+  brattiness:'mimada', rebelliousness:'rebelde', stubbornness:'teimosa', arrogance:'arrogante', humility:'humilde',
+  discipline:'disciplinada', calmness:'calma', enthusiasm:'entusiasmada', nostalgia:'nostálgica', nerdiness:'nerd',
+  gamerSpirit:'gamer', gothicMood:'gótica', villainy:'vilanesca', heroism:'heroica', foulMouth:'desbocada',
+  assertiveness:'assertiva', friendliness:'simpática', generosity:'generosa', sensitivity:'sensível', determination:'determinada',
+  ambition:'ambiciosa', adventurousness:'aventureira', independence:'independente', diplomacy:'diplomática', leadership:'líder',
+  expressiveness:'expressiva', irreverence:'irreverente', resilience:'resiliente', perfectionism:'perfeccionista', streetSmarts:'malandra'
 };
 
 const ALL_TRAIT_KEYS = Object.keys(TRAIT_PROMPT_LABELS);
@@ -375,6 +442,27 @@ function profanityInstruction(level, compact = false) {
     'muito palavrão forte: porra/caralho/foda-se',
     'palavrão forte muito frequente, sem slur/ataque pessoal'
   ][n];
+}
+
+const REAL_PROFANITY_TERMS = /\b(?:droga|merda|porra|cacete|caralho|foda|foda-se|puta que pariu)\b/i;
+const PROFANITY_STARTERS = {
+  1: ['droga', 'merda'],
+  2: ['merda', 'porra', 'cacete'],
+  3: ['porra', 'caralho', 'puta que pariu'],
+  4: ['caralho', 'porra', 'foda-se', 'puta que pariu'],
+  5: ['caralho', 'puta que pariu', 'foda-se', 'porra']
+};
+const PROFANITY_INJECT_CHANCE = [0, 15, 35, 55, 80, 100];
+
+function ensureRealProfanity(value) {
+  let text = cleanSpeechText(value);
+  const level = Math.max(0, Math.min(5, Number(config?.profanity) || 0));
+  if (!text || level <= 0 || REAL_PROFANITY_TERMS.test(text)) return text;
+  if (Math.random() * 100 >= PROFANITY_INJECT_CHANCE[level]) return text;
+  const list = PROFANITY_STARTERS[level] || [];
+  if (!list.length) return text;
+  const word = list[Math.floor(Math.random() * list.length)];
+  return truncateUtf8(`${word}, ${text}`, 360);
 }
 
 function sanitizeEmoteList(value, fallback = []) {
@@ -565,9 +653,13 @@ function sanitizeConfig(input = {}) {
   const ignoreUsers = Array.isArray(input.ignoreUsers)
     ? [...new Set(input.ignoreUsers.map(x => String(x).trim().toLowerCase()).filter(Boolean))].slice(0, 100)
     : (base.ignoreUsers || []);
+  const traitValues = Object.fromEntries(
+    ALL_TRAIT_KEYS.map(key => [key, clampInt(input[key], 0, 100, base[key] ?? 50)])
+  );
 
   return {
     ...base,
+    ...traitValues,
     enabled: bool(input.enabled, base.enabled),
     aiName: str(input.aiName, 30, base.aiName) || 'CarolIA',
     channelName: CHANNEL_NAME,
@@ -828,12 +920,12 @@ function buildPrompt(item) {
   const lengthText = config.responseLength === 'medium' ? 'até 2 frases' : '1 frase curta';
   const profanity = profanityInstruction(config.profanity, true);
 
-  // Todos os 29 controles participam: os mais intensos entram primeiro no prompt.
+  // Todos os 75 controles participam: os mais intensos entram primeiro no prompt.
   // Isso mantém o limite do $(customapi) sem ignorar sliders como acontecia antes.
   const rankedTraits = ALL_TRAIT_KEYS
     .map(key => ({ key, value: Number(config[key] || 0), label: TRAIT_PROMPT_LABELS[key] }))
     .sort((a, b) => b.value - a.value);
-  const dominant = rankedTraits.slice(0, 8).map(t => `${t.label} ${t.value}`).join(', ');
+  const dominant = rankedTraits.slice(0, 10).map(t => `${t.label} ${t.value}`).join(', ');
 
   const flirt = config.adultFlirt ? 'flerte adulto leve/duplo sentido' : 'sem flerte sexual';
   const custom = String(config.customPersonality || '').trim();
@@ -973,7 +1065,7 @@ async function completeLocalAiTask(id, rawReply) {
   if (!task) return { ok: false, duplicate: true };
   const rawCleanReply = cleanLocalAiReply(rawReply);
   if (!rawCleanReply) throw new Error('A IA local devolveu uma resposta vazia.');
-  const reply = decorateReplyWithEmotes(rawCleanReply);
+  const reply = decorateReplyWithEmotes(ensureRealProfanity(rawCleanReply));
 
   // V11: o usuário é apenas MOD e NÃO precisa ter acesso à conta icarolzinhabot.
   // A conta do próprio moderador dispara um comando privado do StreamElements;
@@ -1810,7 +1902,7 @@ app.get('/should', timerAuth, (_req, res) => {
 app.get('/say', timerAuth, (req, res) => {
   // O StreamElements chama esta rota com o RESULTADO do $(ai), já escapado por $(queryescape).
   // Primeiro registramos/disparamos a fala; depois devolvemos o MESMO texto para ele publicar no chat.
-  const text = decorateReplyWithEmotes(truncateUtf8(cleanSpeechText(req.query.text || ''), 360));
+  const text = decorateReplyWithEmotes(ensureRealProfanity(truncateUtf8(cleanSpeechText(req.query.text || ''), 360)));
   res.type('text/plain; charset=utf-8');
   if (!text) return res.send('');
   rememberDirectSpeech(text);
