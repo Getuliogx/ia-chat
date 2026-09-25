@@ -15,12 +15,13 @@ Veja `INSTALACAO_RAPIDA.md` e `V11_SEM_ACESSO_BOT.md`.
 
 ## Personalidades, palavrões e emotes
 
-- 75 presets de personalidade pesquisáveis no topo do painel.
-- 60 sliders de traços individuais em **Personalidade**.
+- 76 presets de personalidade pesquisáveis no topo do painel, incluindo TPM.
+- 76 sliders de traços individuais em **Personalidade**.
 - 6 níveis de palavrões reais. Nos níveis altos, o servidor também garante ocorrência de palavrão quando a resposta da IA vier limpa demais.
 - Emotes configuráveis da Twitch com chance e limite por resposta. A fala remove os nomes dos emotes configurados.
 
 
 
 ## Personalidade
-- 75 personalidades prontas e 75 controles de personalidade, todos salvos e usados pelo servidor.
+- 76 personalidades prontas e 76 controles de personalidade, todos salvos e usados pelo servidor.
+- TPM: dominadora, muito palavruda e humilhante em tom de zoeira/roleplay, focando especialmente nos homens do chat quando provocam ou entram na brincadeira; não ataca ninguém por gênero de forma discriminatória fora do contexto de zoeira.

@@ -79,7 +79,8 @@ const sliderDefs = [
   ['irreverence','🤪 Irreverência'],
   ['resilience','🪨 Resiliência'],
   ['perfectionism','🔬 Perfeccionismo'],
-  ['streetSmarts','🦊 Malandragem']
+  ['streetSmarts','🦊 Malandragem'],
+  ['verbalDominance','🦶 Dominação verbal']
 ];
 
 

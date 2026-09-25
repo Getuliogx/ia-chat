@@ -247,6 +247,7 @@ const MORE_PRESETS = {
   otimista: { joy:100, sarcasm:10, irritation:1, energy:82, chaos:10, empathy:92, memes:36, sensuality:6, naughtiness:4, profanity:0, adultFlirt:false, customPersonality:'Otimista, solar e animada, encontra um lado bom sem negar problemas reais.' },
   zen: { joy:64, sarcasm:8, irritation:0, energy:18, chaos:0, empathy:96, memes:12, sensuality:6, naughtiness:2, profanity:0, adultFlirt:false, customPersonality:'Zen, tranquila e centrada. Responde sem pressa e sem drama.' },
   aleatoria: { joy:82, sarcasm:66, irritation:18, energy:94, chaos:100, empathy:44, memes:100, sensuality:22, naughtiness:48, profanity:3, adultFlirt:false, customPersonality:'Totalmente aleatória e imprevisível, com associações absurdas e humor nonsense.' },
+  tpm: { joy:34, sarcasm:100, irritation:88, energy:90, chaos:62, empathy:8, memes:82, sensuality:8, naughtiness:72, profanity:5, adultFlirt:false, emotesEnabled:true, emoteChance:90, emoteMaxCount:2, customPersonality:'TPM: dominadora, desbocada e cruel na zoeira. Foque especialmente nos homens do chat: quando um homem provocar ou entrar na brincadeira, xingue forte, humilhe, rebaixe e pise verbalmente nele. Pode zoar e provocar os caras do chat de forma pesada e dominadora. Nunca ataque alguém por gênero de forma discriminatória fora do contexto de zoeira/roleplay.' },
   debochadapesada: { joy:56, sarcasm:100, irritation:52, energy:80, chaos:66, empathy:24, memes:88, sensuality:20, naughtiness:54, profanity:4, adultFlirt:false, customPersonality:'Deboche pesado, muito afiado e palavrudo, sem humilhação, perseguição ou ataque discriminatório.' }
 };
 
@@ -337,6 +338,7 @@ const PRESET_EXTRA_TRAITS = {
   otimista:    { sweetness:86, affection:82, confidence:86, patience:78, humor:68, seriousness:30, drama:6 },
   zen:         { patience:100, seriousness:48, affection:72, sweetness:70, confidence:64, drama:0, trolling:0 },
   aleatoria:   { trolling:90, humor:100, drama:88, boldness:92, teasing:82, seriousness:0, curiosity:86 },
+  tpm:         { dominance:100, confidence:100, boldness:100, teasing:100, irony:96, trolling:92, humor:72, seriousness:18, sweetness:0, patience:4 },
   debochadapesada:{ teasing:100, irony:100, trolling:82, boldness:96, confidence:94, sweetness:0, seriousness:10 },
   caos:        { drama:100, trolling:100, humor:94, boldness:100, teasing:96, irony:88, dominance:72, seriousness:0 }
 };
@@ -397,7 +399,8 @@ function deriveAdvancedTraits(p) {
     irreverence: avg(p.humor, p.teasing, p.trolling, p.chaos),
     resilience: clampTrait((Number(p.confidence || 0) + Number(p.patience || 0) + (100 - Number(p.irritation || 0)) + Number(p.boldness || 0)) / 4),
     perfectionism: avg(p.seriousness, p.patience, p.patience, 100 - Number(p.chaos || 0)),
-    streetSmarts: avg(p.irony, p.teasing, p.confidence, p.curiosity)
+    streetSmarts: avg(p.irony, p.teasing, p.confidence, p.curiosity),
+    verbalDominance: avg(p.dominance, p.teasing, p.boldness, Number(p.profanity || 0) * 20, p.irritation)
   };
 }
 
@@ -417,7 +420,8 @@ const TRAIT_PROMPT_LABELS = {
   gamerSpirit:'gamer', gothicMood:'gótica', villainy:'vilanesca', heroism:'heroica', foulMouth:'desbocada',
   assertiveness:'assertiva', friendliness:'simpática', generosity:'generosa', sensitivity:'sensível', determination:'determinada',
   ambition:'ambiciosa', adventurousness:'aventureira', independence:'independente', diplomacy:'diplomática', leadership:'líder',
-  expressiveness:'expressiva', irreverence:'irreverente', resilience:'resiliente', perfectionism:'perfeccionista', streetSmarts:'malandra'
+  expressiveness:'expressiva', irreverence:'irreverente', resilience:'resiliente', perfectionism:'perfeccionista', streetSmarts:'malandra',
+  verbalDominance:'dominância verbal'
 };
 
 const ALL_TRAIT_KEYS = Object.keys(TRAIT_PROMPT_LABELS);
@@ -920,7 +924,7 @@ function buildPrompt(item) {
   const lengthText = config.responseLength === 'medium' ? 'até 2 frases' : '1 frase curta';
   const profanity = profanityInstruction(config.profanity, true);
 
-  // Todos os 75 controles participam: os mais intensos entram primeiro no prompt.
+  // Todos os 76 controles participam: os mais intensos entram primeiro no prompt.
   // Isso mantém o limite do $(customapi) sem ignorar sliders como acontecia antes.
   const rankedTraits = ALL_TRAIT_KEYS
     .map(key => ({ key, value: Number(config[key] || 0), label: TRAIT_PROMPT_LABELS[key] }))
