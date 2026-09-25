@@ -9,84 +9,13 @@ let manualEditRevision = 0;
 let manualSaveInFlight = false;
 let presetApplyPending = false;
 
-const sliderDefs = [
-  ['joy','😄 Felicidade'],
-  ['sarcasm','😈 Sarcasmo'],
-  ['irritation','😡 Irritação'],
-  ['energy','⚡ Energia'],
-  ['chaos','💥 Caos'],
-  ['empathy','❤️ Empatia'],
-  ['memes','😂 Memes'],
-  ['sensuality','💋 Sensualidade'],
-  ['naughtiness','😏 Atrevimento'],
-  ['affection','🤗 Carinho'],
-  ['shyness','🙈 Timidez'],
-  ['romanticism','💕 Romantismo'],
-  ['humor','🤣 Humor'],
-  ['teasing','🙃 Deboche'],
-  ['irony','😼 Ironia'],
-  ['drama','🎭 Drama'],
-  ['jealousy','😒 Ciúmes'],
-  ['curiosity','🔎 Curiosidade'],
-  ['patience','🧘 Paciência'],
-  ['confidence','😎 Confiança'],
-  ['boldness','🔥 Ousadia'],
-  ['dominance','👑 Dominância'],
-  ['mystery','🔮 Mistério'],
-  ['elegance','💎 Elegância'],
-  ['competitiveness','🎮 Competitividade'],
-  ['gossip','🗣️ Fofoca'],
-  ['trolling','🧌 Troll'],
-  ['sweetness','🥰 Doçura'],
-  ['seriousness','🧐 Seriedade'],
-  ['spontaneity','🎲 Espontaneidade'],
-  ['directness','🎯 Direta'],
-  ['provocation','😼 Provocação'],
-  ['playfulness','🪀 Brincalhona'],
-  ['impulsiveness','💨 Impulsividade'],
-  ['creativity','🎨 Criatividade'],
-  ['wittiness','🧠 Sagacidade'],
-  ['charm','✨ Charme'],
-  ['warmth','🫶 Calor humano'],
-  ['loyalty','🤝 Lealdade'],
-  ['protectiveness','🛡️ Proteção'],
-  ['optimism','☀️ Otimismo'],
-  ['pessimism','🌧️ Pessimismo'],
-  ['cynicism','😏 Cinismo'],
-  ['eccentricity','🌀 Excentricidade'],
-  ['suspicion','👀 Desconfiança'],
-  ['brattiness','👸 Mimada'],
-  ['rebelliousness','🤘 Rebeldia'],
-  ['stubbornness','🧱 Teimosia'],
-  ['arrogance','😤 Arrogância'],
-  ['humility','🌿 Humildade'],
-  ['discipline','📏 Disciplina'],
-  ['calmness','🌙 Calma'],
-  ['enthusiasm','🚀 Entusiasmo'],
-  ['nostalgia','📼 Nostalgia'],
-  ['nerdiness','🤓 Nerdice'],
-  ['gamerSpirit','🕹️ Espírito gamer'],
-  ['gothicMood','🖤 Clima gótico'],
-  ['villainy','😈 Vilania'],
-  ['heroism','🦸‍♀️ Heroísmo'],
-  ['foulMouth','🤬 Desbocamento'],
-  ['assertiveness','📢 Assertividade'],
-  ['friendliness','🙂 Simpatia'],
-  ['generosity','🎁 Generosidade'],
-  ['sensitivity','💗 Sensibilidade'],
-  ['determination','🏁 Determinação'],
-  ['ambition','🏆 Ambição'],
-  ['adventurousness','🧭 Espírito aventureiro'],
-  ['independence','🦅 Independência'],
-  ['diplomacy','🕊️ Diplomacia'],
-  ['leadership','⭐ Liderança'],
-  ['expressiveness','🎤 Expressividade'],
-  ['irreverence','🤪 Irreverência'],
-  ['resilience','🪨 Resiliência'],
-  ['perfectionism','🔬 Perfeccionismo'],
-  ['streetSmarts','🦊 Malandragem'],
-  ['verbalDominance','🦶 Dominação verbal']
-];
+const personalityDefs = [...document.querySelectorAll('[data-preset]')].map(button => [
+  button.dataset.preset,
+  button.textContent.trim()
+]);
+
+const personalityInputId = name => `personality_${name}`;
+
 
 
 function setupPresetSearch() {
@@ -109,20 +38,30 @@ function setupPresetSearch() {
 }
 
 
-function presetLabel(name) {
-  if (!name || name === 'manual') return 'Manual';
+function personalityLabel(name) {
   const button = document.querySelector(`[data-preset="${CSS.escape(name)}"]`);
   return button ? button.textContent.replace(/\s*✓\s*$/, '').trim() : name;
 }
 
-function updatePresetSelection(name) {
-  const mode = name && name !== 'manual' ? name : 'manual';
+function currentPersonalityLevels() {
+  const levels = {};
+  for (const [name] of personalityDefs) {
+    const input = $(personalityInputId(name));
+    levels[name] = input ? Number(input.value || 0) : Number(cfg?.personalityLevels?.[name] || 0);
+  }
+  return levels;
+}
+
+function updatePersonalitySelection(levels = currentPersonalityLevels()) {
+  const active = [];
   document.querySelectorAll('[data-preset]').forEach(button => {
-    const selected = mode !== 'manual' && button.dataset.preset === mode;
+    const value = Number(levels?.[button.dataset.preset] || 0);
+    const selected = value > 0;
     button.classList.toggle('selected', selected);
     button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    if (selected) active.push(`${personalityLabel(button.dataset.preset)} (${value})`);
   });
-  if ($('presetMode')) $('presetMode').textContent = presetLabel(mode);
+  if ($('presetMode')) $('presetMode').textContent = active.length ? active.join(' + ') : 'Nenhuma';
 }
 
 function setManualSaveState(text='', kind='') {
@@ -135,8 +74,7 @@ function setManualSaveState(text='', kind='') {
 function enterManualMode() {
   if (fillingForm || !cfg) return;
   cfg.preset = 'manual';
-  updatePresetSelection('manual');
-  setManualSaveState('alteração manual pendente');
+  setManualSaveState('alteração pendente');
 }
 
 function scheduleManualSave() {
@@ -194,19 +132,38 @@ async function api(url, options={}) {
 
 function makeSliders() {
   $('sliders').innerHTML = '';
-  for (const [id,label] of sliderDefs) {
+  for (const [name,label] of personalityDefs) {
+    const id = personalityInputId(name);
     const div = document.createElement('div');
     div.className = 'slider-item';
-    div.innerHTML = `<div class="slider-title"><span>${label}</span><b id="${id}Out">0</b></div><input id="${id}" type="range" min="0" max="100">`;
+    div.innerHTML = `<div class="slider-title"><span>${label}</span><b id="${id}Out">0</b></div><input id="${id}" type="range" min="0" max="100" value="0">`;
     $('sliders').appendChild(div);
     const input = div.querySelector('input');
     input.addEventListener('input', e => {
       $(id+'Out').textContent = e.target.value;
+      if (!cfg.personalityLevels) cfg.personalityLevels = {};
+      cfg.personalityLevels[name] = Number(e.target.value);
+      updatePersonalitySelection();
       enterManualMode();
     });
     input.addEventListener('change', () => scheduleManualSave());
   }
 }
+
+async function togglePersonality(name) {
+  const id = personalityInputId(name);
+  const input = $(id);
+  if (!input) return;
+  const next = Number(input.value || 0) > 0 ? 0 : 100;
+  input.value = next;
+  $(id+'Out').textContent = next;
+  if (!cfg.personalityLevels) cfg.personalityLevels = {};
+  cfg.personalityLevels[name] = next;
+  updatePersonalitySelection();
+  enterManualMode();
+  scheduleManualSave();
+}
+
 
 function fill(c) {
   fillingForm = true;
@@ -222,8 +179,9 @@ function fill(c) {
     const el = $(id); if (!el) continue;
     if (el.type === 'checkbox') el.checked = Boolean(c[id]); else el.value = c[id];
   }
-  for (const [id] of sliderDefs) {
-    const value = Number.isFinite(Number(c[id])) ? Number(c[id]) : 0;
+  for (const [name] of personalityDefs) {
+    const id = personalityInputId(name);
+    const value = Number.isFinite(Number(c.personalityLevels?.[name])) ? Number(c.personalityLevels[name]) : 0;
     $(id).value = value;
     $(id+'Out').textContent = value;
   }
@@ -231,7 +189,7 @@ function fill(c) {
   if ($('emoteChanceOut')) $('emoteChanceOut').textContent = `${c.emoteChance ?? 70}%`;
   if ($('emoteList')) $('emoteList').value = (c.emoteList || []).join('\n');
   $('ignoreUsers').value = (c.ignoreUsers || []).join('\n');
-  updatePresetSelection(c.preset || 'manual');
+  updatePersonalitySelection(c.personalityLevels || {});
   fillingForm = false;
 }
 
@@ -243,7 +201,8 @@ function collect() {
   ['aiName','responseLength','customPersonality','avatarImageUrl','ttsVoice'].forEach(id => out[id] = $(id).value);
   ['profanity','emoteChance','emoteMaxCount','answerChance','cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ttsRate','ttsPitch','ttsVolume','botResponseWindowSeconds','localAiPort','localAiMaxTokens','localAiTemperature','localAiTimeoutSeconds']
     .forEach(id => out[id] = Number($(id).value));
-  sliderDefs.forEach(([id]) => out[id] = Number($(id).value));
+  out.personalityLevels = {};
+  personalityDefs.forEach(([name]) => out.personalityLevels[name] = Number($(personalityInputId(name)).value));
   out.ignoreUsers = $('ignoreUsers').value.split(/\n|,/).map(s => s.trim()).filter(Boolean);
   out.emoteList = $('emoteList').value.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
   return out;
@@ -293,23 +252,9 @@ async function save() {
 }
 
 async function applyPreset(name) {
-  presetApplyPending = true;
-  clearTimeout(manualSaveTimer);
-  manualEditRevision += 1;
-  try {
-    while (manualSaveInFlight) await new Promise(resolve => setTimeout(resolve, 25));
-    clearTimeout(manualSaveTimer);
-    const data = await api('/api/apply-preset/'+encodeURIComponent(name), {method:'POST'});
-    fill(data.config);
-    setManualSaveState('');
-    $('saveMsg').textContent = `Preset ${presetLabel(name)} selecionado e salvo sem alterar os 76 controles.`;
-    $('saveMsg').className = 'msg ok';
-  } catch (e) {
-    alert(e.message);
-  } finally {
-    presetApplyPending = false;
-  }
+  return togglePersonality(name);
 }
+
 
 async function refreshStatus() {
   if ($('app').classList.contains('hidden')) return;

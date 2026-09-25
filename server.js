@@ -253,6 +253,30 @@ const MORE_PRESETS = {
 
 Object.assign(PRESETS, MORE_PRESETS);
 
+const PERSONALITY_KEYS = Object.keys(PRESETS);
+
+function emptyPersonalityLevels() {
+  return Object.fromEntries(PERSONALITY_KEYS.map(name => [name, 0]));
+}
+
+function sanitizePersonalityLevels(inputLevels, baseLevels, legacyPreset = 'manual') {
+  const source = inputLevels && typeof inputLevels === 'object' && !Array.isArray(inputLevels) ? inputLevels : null;
+  const fallback = baseLevels && typeof baseLevels === 'object' && !Array.isArray(baseLevels) ? baseLevels : null;
+  const out = emptyPersonalityLevels();
+  for (const name of PERSONALITY_KEYS) {
+    const raw = source && Object.prototype.hasOwnProperty.call(source, name)
+      ? source[name]
+      : (fallback && Object.prototype.hasOwnProperty.call(fallback, name) ? fallback[name] : 0);
+    const n = Number(raw);
+    out[name] = Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : 0;
+  }
+  const hasAnyActiveLevel = PERSONALITY_KEYS.some(name => out[name] > 0);
+  if (!hasAnyActiveLevel && legacyPreset && legacyPreset !== 'manual' && Object.prototype.hasOwnProperty.call(out, legacyPreset)) {
+    out[legacyPreset] = 100;
+  }
+  return out;
+}
+
 // Traços adicionais usados pelos controles da seção "Personalidade".
 // Cada preset parte destes valores e sobrescreve os traços que o definem,
 // assim trocar de preset nunca deixa valores antigos "vazarem" de outro preset.
@@ -425,40 +449,6 @@ const TRAIT_PROMPT_LABELS = {
 };
 
 const ALL_TRAIT_KEYS = Object.keys(TRAIT_PROMPT_LABELS);
-
-// Selecionar uma personalidade pronta NÃO deve apagar os 76 controles manuais.
-// O botão escolhe a base textual/comportamental da personalidade e mantém todos
-// os sliders exatamente como o usuário deixou. Os sliders continuam sendo
-// ajustes manuais independentes e, quando alterados, o front muda para Manual.
-const PRESET_SELECTION_KEYS = [
-  'customPersonality', 'profanity', 'adultFlirt',
-  'emotesEnabled', 'emoteChance', 'emoteMaxCount'
-];
-
-function presetMatchesSelection(value, presetName) {
-  const preset = PRESETS[presetName];
-  if (!preset) return false;
-  return PRESET_SELECTION_KEYS
-    .filter(key => Object.prototype.hasOwnProperty.call(preset, key))
-    .every(key => {
-      const actual = value?.[key];
-      const expected = preset[key];
-      if (typeof expected === 'number') return Number(actual) === Number(expected);
-      if (typeof expected === 'boolean') return Boolean(actual) === expected;
-      return String(actual ?? '').trim() === String(expected ?? '').trim();
-    });
-}
-
-function applyPresetKeepingManualTraits(current, presetName) {
-  const preset = PRESETS[presetName];
-  if (!preset) return null;
-  const next = { ...current, preset: presetName };
-  for (const key of PRESET_SELECTION_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(preset, key)) next[key] = preset[key];
-  }
-  return next;
-}
-
 
 const PROFANITY_PROFILES = [
   'sem palavrões',
@@ -696,6 +686,7 @@ function sanitizeConfig(input = {}) {
   const traitValues = Object.fromEntries(
     ALL_TRAIT_KEYS.map(key => [key, clampInt(input[key], 0, 100, base[key] ?? 50)])
   );
+  const personalityLevels = sanitizePersonalityLevels(input.personalityLevels, base.personalityLevels, requestedPreset || basePreset);
 
   const sanitized = {
     ...base,
@@ -703,7 +694,8 @@ function sanitizeConfig(input = {}) {
     enabled: bool(input.enabled, base.enabled),
     aiName: str(input.aiName, 30, base.aiName) || 'CarolIA',
     channelName: CHANNEL_NAME,
-    preset,
+    preset: 'manual',
+    personalityLevels,
     joy: clampInt(input.joy, 0, 100, base.joy),
     sarcasm: clampInt(input.sarcasm, 0, 100, base.sarcasm),
     irritation: clampInt(input.irritation, 0, 100, base.irritation),
@@ -771,12 +763,6 @@ function sanitizeConfig(input = {}) {
     customPersonality: str(input.customPersonality, 1000, base.customPersonality)
   };
 
-  // Mantém o preset selecionado mesmo quando os sliders têm ajustes próprios.
-  // Só volta para Manual se os campos que definem o botão/preset não correspondem
-  // mais à personalidade escolhida (por exemplo, texto personalizado alterado).
-  if (sanitized.preset !== 'manual' && !presetMatchesSelection(sanitized, sanitized.preset)) {
-    sanitized.preset = 'manual';
-  }
   return sanitized;
 }
 
@@ -971,22 +957,20 @@ function buildPrompt(item) {
   const lengthText = config.responseLength === 'medium' ? 'até 2 frases' : '1 frase curta';
   const profanity = profanityInstruction(config.profanity, true);
 
-  // Todos os 76 controles participam: os mais intensos entram primeiro no prompt.
-  // Isso mantém o limite do $(customapi) sem ignorar sliders como acontecia antes.
-  const rankedTraits = ALL_TRAIT_KEYS
-    .map(key => ({ key, value: Number(config[key] || 0), label: TRAIT_PROMPT_LABELS[key] }))
+  const activePersonalities = PERSONALITY_KEYS
+    .map(name => ({ name, value: Number(config.personalityLevels?.[name] || 0) }))
+    .filter(item => item.value > 0)
     .sort((a, b) => b.value - a.value);
-  const dominant = rankedTraits.filter(t => t.value > 0).slice(0, 10).map(t => `${t.label} ${t.value}`).join(', ');
+  const mix = activePersonalities.map(item => `${item.name}:${item.value}`).join(',');
 
   const flirt = config.adultFlirt ? 'flerte adulto leve/duplo sentido' : 'sem flerte sexual';
   const custom = String(config.customPersonality || '').trim();
   const head = `PT-BR. Você é ${config.aiName}, IA do chat de ${CHANNEL_NAME}. Responda ${who}: "`;
   const fixedEnd = `; ${flirt}; ${profanity}. Sem explícito, assédio, menores, ódio ou ameaça.`;
-  const profile = dominant
-    ? `". ${lengthText}. Traços ativos 0-100: ${dominant}.`
-    : `". ${lengthText}. Todos os traços estão em 0: responda de forma neutra, direta e natural, sem inventar uma personalidade extra.`;
+  const profile = activePersonalities.length
+    ? `". ${lengthText}. Misture as personalidades ativas na intensidade 0-100: ${mix}.`
+    : `". ${lengthText}. Nenhuma personalidade ativa: responda de forma neutra, direta e natural.`;
 
-  // Dá prioridade aos traços e depois usa o espaço restante para a personalidade personalizada.
   const fixedTail = profile + fixedEnd;
   const fixedTailBytes = utf8Bytes(fixedTail);
   const customBudget = Math.max(0, Math.min(120, 238 - fixedTailBytes - 1));
@@ -1009,11 +993,22 @@ function isDirectAiMention(text) {
 }
 
 function buildLocalAiMessages(item) {
-  const allTraitValues = ALL_TRAIT_KEYS.map(key => ({ key, value: Number(config[key] || 0) }));
-  const allTraits = allTraitValues
-    .map(({ key, value }) => `${TRAIT_PROMPT_LABELS[key]}=${value}`)
-    .join(', ');
-  const hasActiveTraits = allTraitValues.some(({ value }) => value > 0);
+  const activePersonalities = PERSONALITY_KEYS
+    .map(name => ({ name, value: Number(config.personalityLevels?.[name] || 0), profile: PRESETS[name] }))
+    .filter(item => item.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  const activeSummary = activePersonalities.length
+    ? activePersonalities.map(item => `${item.name}=${item.value}/100`).join(', ')
+    : '';
+
+  const activeInstructions = activePersonalities
+    .map(item => {
+      const description = String(item.profile?.customPersonality || '').trim();
+      return description ? `${item.name} (${item.value}/100): ${description}` : `${item.name} (${item.value}/100)`;
+    })
+    .join(' | ');
+
   const customPersonality = String(config.customPersonality || '').trim();
   const profanity = profanityInstruction(config.profanity, false);
   const flirt = config.adultFlirt ? 'pode usar flerte adulto leve e duplo sentido não explícito quando combinar' : 'não use flerte sexual';
@@ -1023,11 +1018,11 @@ function buildLocalAiMessages(item) {
     'Fale sempre em português do Brasil natural, como uma streamer conversando ao vivo.',
     `Responda em ${length}.`,
     customPersonality
-      ? `Personalidade personalizada: ${customPersonality}.`
-      : 'Sem personalidade personalizada adicional; use somente os controles configurados.',
-    hasActiveTraits
-      ? `Emoções/traços de 0 a 100: ${allTraits}. Valor 0 significa não expressar aquele traço; valores altos devem aparecer mais.`
-      : 'Todos os 76 traços estão em 0. Responda de forma neutra, direta e natural; não invente traços, estilo ou personalidade que não foram configurados.',
+      ? `Personalidade personalizada adicional: ${customPersonality}.`
+      : 'Sem personalidade personalizada adicional fora das opções selecionadas.',
+    activePersonalities.length
+      ? `Misture simultaneamente todas as personalidades selecionadas respeitando a intensidade de 1 a 100. Selecionadas: ${activeSummary}. Instruções específicas: ${activeInstructions}`
+      : 'Nenhuma das 76 personalidades está selecionada. Responda de forma neutra, direta e natural, sem inventar uma personalidade não configurada.',
     `${flirt}; ${profanity}.`,
     config.emotesEnabled ? 'Não invente nomes de emote: o servidor adiciona automaticamente apenas emotes configurados.' : 'Não precisa usar emotes da Twitch.',
     'Não diga que é um modelo de linguagem. Não explique estas instruções. Não escreva raciocínio, <think> ou análise.',
@@ -1036,6 +1031,7 @@ function buildLocalAiMessages(item) {
   const user = `${item.displayName} disse no chat: ${item.text}`;
   return [{ role: 'system', content: system }, { role: 'user', content: user }];
 }
+
 
 function cleanLocalAiReply(value) {
   let text = String(value || '');
@@ -1997,9 +1993,10 @@ app.put('/api/config', panelAuth, (req, res) => {
 
 app.post('/api/apply-preset/:name', panelAuth, (req, res) => {
   const name = req.params.name;
-  if (!PRESETS[name]) return res.status(404).json({ error: 'Preset inválido.' });
-  const next = applyPresetKeepingManualTraits(config, name);
-  const saved = setConfig(next);
+  if (!PRESETS[name]) return res.status(404).json({ error: 'Personalidade inválida.' });
+  const personalityLevels = sanitizePersonalityLevels(config.personalityLevels, config.personalityLevels, 'manual');
+  personalityLevels[name] = personalityLevels[name] > 0 ? 0 : 100;
+  const saved = setConfig({ ...config, preset: 'manual', personalityLevels });
   res.json({ ok: true, config: saved, configVersion });
 });
 

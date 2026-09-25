@@ -31,10 +31,10 @@
       <section class="toolbar card">
         <label class="switch-line"><input id="enabled" type="checkbox"><span class="switch"></span><strong>IA automática</strong></label>
         <div class="preset-area">
-          <h3 class="preset-title">Personalidades prontas — 76 opções</h3>
+          <h3 class="preset-title">Personalidades — 76 opções</h3>
           <div class="preset-tools"><input id="presetSearch" placeholder="Buscar personalidade..."><span id="presetCount"></span></div>
-          <div class="preset-mode">Modo atual: <strong id="presetMode">Manual</strong><span id="manualSaveState"></span></div>
-          <p class="hint preset-hint">Clicar em uma personalidade pronta não zera nem altera os 76 controles manuais.</p>
+          <div class="preset-mode">Selecionadas: <strong id="presetMode">Nenhuma</strong><span id="manualSaveState"></span></div>
+          <p class="hint preset-hint">Cada botão corresponde exatamente a uma barra abaixo. Clique para ligar/desligar somente aquela personalidade. Você pode selecionar várias ao mesmo tempo.</p>
           <div class="preset-buttons">
           <button data-preset="suave">😇 Suave</button>
           <button data-preset="normal">🙂 Normal</button>
@@ -142,8 +142,8 @@
               <p class="hint">Coloque os nomes exatos dos emotes disponíveis no chat. O texto enviado ao Twitch inclui esses nomes; emotes reconhecidos pelo chat são renderizados normalmente. A voz remove os nomes configurados antes de falar.</p>
             </div>
           </div>
-          <h3 class="traits-title">Traços da personalidade — 76 controles</h3>
-          <p class="hint">Os 76 controles entram no perfil da IA. Ao alterar qualquer traço, palavrão, flerte ou personalidade personalizada, o painel muda para <b>Modo manual</b> e salva essa personalidade automaticamente.</p>
+          <h3 class="traits-title">Intensidade das personalidades — 76 controles</h3>
+          <p class="hint">As 76 barrinhas são exatamente as mesmas 76 personalidades dos botões acima. 0 = desligada; 1–100 = intensidade. Alterar uma não mexe nas outras, e várias podem ficar ativas juntas.</p>
           <div id="sliders"></div>
 
           <p class="hint warning">Sensual/Safadinha = provocação e duplo sentido não explícitos. O sistema instrui a IA a não gerar sexo explícito, assédio ou sexualização de menores.</p>
