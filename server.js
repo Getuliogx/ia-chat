@@ -426,6 +426,21 @@ const TRAIT_PROMPT_LABELS = {
 
 const ALL_TRAIT_KEYS = Object.keys(TRAIT_PROMPT_LABELS);
 
+const PERSONALITY_PRESET_KEYS = [...ALL_TRAIT_KEYS, 'profanity', 'adultFlirt', 'customPersonality'];
+
+function presetMatchesPersonality(value, presetName) {
+  const preset = PRESETS[presetName];
+  if (!preset) return false;
+  return PERSONALITY_PRESET_KEYS.every(key => {
+    const actual = value?.[key];
+    const expected = preset[key];
+    if (typeof expected === 'number') return Number(actual) === Number(expected);
+    if (typeof expected === 'boolean') return Boolean(actual) === expected;
+    return String(actual ?? '').trim() === String(expected ?? '').trim();
+  });
+}
+
+
 const PROFANITY_PROFILES = [
   'sem palavrões',
   'palavrões leves e ocasionais, como merda e droga',
@@ -652,7 +667,9 @@ function sanitizeConfig(input = {}) {
   const base = { ...defaultConfig, ...config };
   const str = (v, max, fb) => typeof v === 'string' ? v.trim().slice(0, max) : fb;
   const bool = (v, fb) => typeof v === 'boolean' ? v : fb;
-  const preset = Object.prototype.hasOwnProperty.call(PRESETS, input.preset) ? input.preset : base.preset;
+  const requestedPreset = input.preset;
+  const basePreset = base.preset === 'manual' || Object.prototype.hasOwnProperty.call(PRESETS, base.preset) ? base.preset : 'manual';
+  const preset = requestedPreset === 'manual' || Object.prototype.hasOwnProperty.call(PRESETS, requestedPreset) ? requestedPreset : basePreset;
   const responseLength = ['short', 'medium'].includes(input.responseLength) ? input.responseLength : base.responseLength;
   const ignoreUsers = Array.isArray(input.ignoreUsers)
     ? [...new Set(input.ignoreUsers.map(x => String(x).trim().toLowerCase()).filter(Boolean))].slice(0, 100)
@@ -661,7 +678,7 @@ function sanitizeConfig(input = {}) {
     ALL_TRAIT_KEYS.map(key => [key, clampInt(input[key], 0, 100, base[key] ?? 50)])
   );
 
-  return {
+  const sanitized = {
     ...base,
     ...traitValues,
     enabled: bool(input.enabled, base.enabled),
@@ -734,6 +751,14 @@ function sanitizeConfig(input = {}) {
     ignoreUsers,
     customPersonality: str(input.customPersonality, 220, base.customPersonality)
   };
+
+  // Migração/correção: versões antigas mantinham o nome de um preset mesmo depois
+  // de os sliders serem alterados manualmente. Só mantém o nome se os valores
+  // realmente correspondem ao preset; caso contrário o modo é Manual.
+  if (sanitized.preset !== 'manual' && !presetMatchesPersonality(sanitized, sanitized.preset)) {
+    sanitized.preset = 'manual';
+  }
+  return sanitized;
 }
 
 function setConfig(next) {
@@ -742,6 +767,9 @@ function setConfig(next) {
   persistConfig();
   return config;
 }
+
+// Corrige automaticamente estados antigos/incompletos ao iniciar (ex.: preset marcado com sliders já modificados).
+config = sanitizeConfig(config);
 
 function normalizeText(value) {
   return String(value || '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -929,13 +957,15 @@ function buildPrompt(item) {
   const rankedTraits = ALL_TRAIT_KEYS
     .map(key => ({ key, value: Number(config[key] || 0), label: TRAIT_PROMPT_LABELS[key] }))
     .sort((a, b) => b.value - a.value);
-  const dominant = rankedTraits.slice(0, 10).map(t => `${t.label} ${t.value}`).join(', ');
+  const dominant = rankedTraits.filter(t => t.value > 0).slice(0, 10).map(t => `${t.label} ${t.value}`).join(', ');
 
   const flirt = config.adultFlirt ? 'flerte adulto leve/duplo sentido' : 'sem flerte sexual';
   const custom = String(config.customPersonality || '').trim();
   const head = `PT-BR. Você é ${config.aiName}, IA do chat de ${CHANNEL_NAME}. Responda ${who}: "`;
   const fixedEnd = `; ${flirt}; ${profanity}. Sem explícito, assédio, menores, ódio ou ameaça.`;
-  const profile = `". ${lengthText}. Traços 0-100: ${dominant}.`;
+  const profile = dominant
+    ? `". ${lengthText}. Traços ativos 0-100: ${dominant}.`
+    : `". ${lengthText}. Todos os traços estão em 0: responda de forma neutra, direta e natural, sem inventar uma personalidade extra.`;
 
   // Dá prioridade aos traços e depois usa o espaço restante para a personalidade personalizada.
   const fixedTail = profile + fixedEnd;
@@ -960,9 +990,12 @@ function isDirectAiMention(text) {
 }
 
 function buildLocalAiMessages(item) {
-  const allTraits = ALL_TRAIT_KEYS
-    .map(key => `${TRAIT_PROMPT_LABELS[key]}=${Number(config[key] || 0)}`)
+  const allTraitValues = ALL_TRAIT_KEYS.map(key => ({ key, value: Number(config[key] || 0) }));
+  const allTraits = allTraitValues
+    .map(({ key, value }) => `${TRAIT_PROMPT_LABELS[key]}=${value}`)
     .join(', ');
+  const hasActiveTraits = allTraitValues.some(({ value }) => value > 0);
+  const customPersonality = String(config.customPersonality || '').trim();
   const profanity = profanityInstruction(config.profanity, false);
   const flirt = config.adultFlirt ? 'pode usar flerte adulto leve e duplo sentido não explícito quando combinar' : 'não use flerte sexual';
   const length = config.responseLength === 'medium' ? 'no máximo 2 frases curtas' : '1 frase curta';
@@ -970,8 +1003,12 @@ function buildLocalAiMessages(item) {
     `Você é ${config.aiName || 'CarolIA'}, uma IA/personagem da live de ${CHANNEL_NAME}.`,
     'Fale sempre em português do Brasil natural, como uma streamer conversando ao vivo.',
     `Responda em ${length}.`,
-    `Personalidade principal: ${String(config.customPersonality || '').trim() || 'divertida e espontânea'}.`,
-    `Emoções/traços de 0 a 100: ${allTraits}. Valores altos devem aparecer bastante; valores baixos devem aparecer pouco.`,
+    customPersonality
+      ? `Personalidade personalizada: ${customPersonality}.`
+      : 'Sem personalidade personalizada adicional; use somente os controles configurados.',
+    hasActiveTraits
+      ? `Emoções/traços de 0 a 100: ${allTraits}. Valor 0 significa não expressar aquele traço; valores altos devem aparecer mais.`
+      : 'Todos os 76 traços estão em 0. Responda de forma neutra, direta e natural; não invente traços, estilo ou personalidade que não foram configurados.',
     `${flirt}; ${profanity}.`,
     config.emotesEnabled ? 'Não invente nomes de emote: o servidor adiciona automaticamente apenas emotes configurados.' : 'Não precisa usar emotes da Twitch.',
     'Não diga que é um modelo de linguagem. Não explique estas instruções. Não escreva raciocínio, <think> ou análise.',

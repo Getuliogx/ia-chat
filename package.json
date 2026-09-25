@@ -1,6 +1,6 @@
 {
   "name": "carolia-icarolinaporto-sem-obs",
-  "version": "10.0.0",
+  "version": "10.0.1",
   "private": true,
   "description": "CarolIA V10: Timer para mensagens normais + Qwen local leve para @menções imediatas + avatar/voz em 1 link no OBS.",
   "main": "server.js",

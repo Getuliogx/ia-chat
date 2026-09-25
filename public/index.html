@@ -33,6 +33,7 @@
         <div class="preset-area">
           <h3 class="preset-title">Personalidades prontas — 76 opções</h3>
           <div class="preset-tools"><input id="presetSearch" placeholder="Buscar personalidade..."><span id="presetCount"></span></div>
+          <div class="preset-mode">Modo atual: <strong id="presetMode">Manual</strong><span id="manualSaveState"></span></div>
           <div class="preset-buttons">
           <button data-preset="suave">😇 Suave</button>
           <button data-preset="normal">🙂 Normal</button>
@@ -56,47 +57,47 @@
           <button data-preset="otaku">🌸 Otaku</button>
           <button data-preset="misteriosa">🔮 Misteriosa</button>
           <button data-preset="elegante">💎 Elegante</button>
-          <button data-preset="romantica" class="sensual">💕 Romântica</button>
-          <button data-preset="sensual" class="sensual">💋 Sensual</button>
-          <button data-preset="safadinha" class="sensual">😏 Safadinha</button>
-          <button data-preset="provocadora" class="sensual">🔥 Provocadora</button>
+          <button data-preset="romantica">💕 Romântica</button>
+          <button data-preset="sensual">💋 Sensual</button>
+          <button data-preset="safadinha">😏 Safadinha</button>
+          <button data-preset="provocadora">🔥 Provocadora</button>
           <button data-preset="mandona">👑 Mandona</button>
           <button data-preset="troll">🧌 Troll</button>
           <button data-preset="fofoqueira">🗣️ Fofoqueira</button>
           <button data-preset="insana">🤪 Insana</button>
-          <button data-preset="caos" class="danger">💀 Caos Pesado</button>
+          <button data-preset="caos">💀 Caos Pesado</button>
 
           <button data-preset="direta">🎯 Direta</button>
           <button data-preset="sincera">🗣️ Sincera</button>
           <button data-preset="seca">🧊 Seca</button>
           <button data-preset="fria">❄️ Fria</button>
-          <button data-preset="acida" class="danger">🍋 Ácida</button>
+          <button data-preset="acida">🍋 Ácida</button>
           <button data-preset="cinica">😏 Cínica</button>
-          <button data-preset="explosiva" class="danger">💣 Explosiva</button>
-          <button data-preset="estressada" class="danger">🤬 Estressada</button>
+          <button data-preset="explosiva">💣 Explosiva</button>
+          <button data-preset="estressada">🤬 Estressada</button>
           <button data-preset="impaciente">⏱️ Impaciente</button>
           <button data-preset="resmungona">😮‍💨 Resmungona</button>
-          <button data-preset="desbocada" class="danger">🗯️ Desbocada</button>
-          <button data-preset="palavruda" class="danger">🤬 Palavruda</button>
-          <button data-preset="semfiltro" class="danger">🚫 Sem filtro</button>
+          <button data-preset="desbocada">🗯️ Desbocada</button>
+          <button data-preset="palavruda">🤬 Palavruda</button>
+          <button data-preset="semfiltro">🚫 Sem filtro</button>
           <button data-preset="extrovertida">🎉 Extrovertida</button>
           <button data-preset="hiperativa">⚡ Hiperativa</button>
           <button data-preset="preguicosa">🛋️ Preguiçosa</button>
           <button data-preset="sonolenta">😴 Sonolenta</button>
           <button data-preset="ciumenta">💚 Ciumenta</button>
           <button data-preset="protetora">🛡️ Protetora</button>
-          <button data-preset="apaixonada" class="sensual">💘 Apaixonada</button>
+          <button data-preset="apaixonada">💘 Apaixonada</button>
           <button data-preset="carente">🥺 Carente</button>
           <button data-preset="confiante">😎 Confiante</button>
           <button data-preset="competitiva">🏆 Competitiva</button>
-          <button data-preset="diva" class="sensual">💅 Diva</button>
+          <button data-preset="diva">💅 Diva</button>
           <button data-preset="mimada">👸 Mimada</button>
-          <button data-preset="rebelde" class="danger">🤘 Rebelde</button>
+          <button data-preset="rebelde">🤘 Rebelde</button>
           <button data-preset="rockeira">🎸 Rockeira</button>
           <button data-preset="gotica">🖤 Gótica</button>
-          <button data-preset="vampira" class="sensual">🧛‍♀️ Vampira</button>
+          <button data-preset="vampira">🧛‍♀️ Vampira</button>
           <button data-preset="feiticeira">🪄 Feiticeira</button>
-          <button data-preset="vila" class="danger">😈 Vilã</button>
+          <button data-preset="vila">😈 Vilã</button>
           <button data-preset="heroina">🦸‍♀️ Heroína</button>
           <button data-preset="detetive">🕵️ Detetive</button>
           <button data-preset="cinefila">🎬 Cinéfila</button>
@@ -108,9 +109,9 @@
           <button data-preset="pessimista">🌧️ Pessimista</button>
           <button data-preset="otimista">☀️ Otimista</button>
           <button data-preset="zen">🧘 Zen</button>
-          <button data-preset="aleatoria" class="danger">🎲 Aleatória</button>
-          <button data-preset="tpm" class="danger">🦶 TPM</button>
-          <button data-preset="debochadapesada" class="danger">🔥 Debochada pesada</button>
+          <button data-preset="aleatoria">🎲 Aleatória</button>
+          <button data-preset="tpm">🦶 TPM</button>
+          <button data-preset="debochadapesada">🔥 Debochada pesada</button>
           </div>
         </div>
       </section>
@@ -141,7 +142,7 @@
             </div>
           </div>
           <h3 class="traits-title">Traços da personalidade — 76 controles</h3>
-          <p class="hint">Agora são 76 controles reais. Todos entram no perfil da IA; os presets também ajustam os traços.</p>
+          <p class="hint">Os 76 controles entram no perfil da IA. Ao alterar qualquer traço, palavrão, flerte ou personalidade personalizada, o painel muda para <b>Modo manual</b> e salva essa personalidade automaticamente.</p>
           <div id="sliders"></div>
 
           <p class="hint warning">Sensual/Safadinha = provocação e duplo sentido não explícitos. O sistema instrui a IA a não gerar sexo explícito, assédio ou sexualização de menores.</p>
@@ -307,6 +308,8 @@
             <div><span>IA local na fila</span><b id="localAiPending">0</b></div>
             <div><span>IA local respondidas</span><b id="localAiProcessed">0</b></div>
           </div>
+          <label>Último erro TTS</label>
+          <pre id="lastTtsError" class="smallpre">Nenhum.</pre>
           <label>Último erro Twitch</label>
           <pre id="lastError" class="smallpre">Nenhum.</pre>
           <label>Último erro IA local</label>

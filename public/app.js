@@ -3,6 +3,11 @@
 const $ = id => document.getElementById(id);
 let key = localStorage.getItem('carolia.panelKey') || '';
 let cfg = null;
+let fillingForm = false;
+let manualSaveTimer = null;
+let manualEditRevision = 0;
+let manualSaveInFlight = false;
+let presetApplyPending = false;
 
 const sliderDefs = [
   ['joy','😄 Felicidade'],
@@ -103,6 +108,81 @@ function setupPresetSearch() {
   update();
 }
 
+
+function presetLabel(name) {
+  if (!name || name === 'manual') return 'Manual';
+  const button = document.querySelector(`[data-preset="${CSS.escape(name)}"]`);
+  return button ? button.textContent.replace(/\s*✓\s*$/, '').trim() : name;
+}
+
+function updatePresetSelection(name) {
+  const mode = name && name !== 'manual' ? name : 'manual';
+  document.querySelectorAll('[data-preset]').forEach(button => {
+    const selected = mode !== 'manual' && button.dataset.preset === mode;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+  });
+  if ($('presetMode')) $('presetMode').textContent = presetLabel(mode);
+}
+
+function setManualSaveState(text='', kind='') {
+  const el = $('manualSaveState');
+  if (!el) return;
+  el.textContent = text ? `• ${text}` : '';
+  el.className = kind || '';
+}
+
+function enterManualMode() {
+  if (fillingForm || !cfg) return;
+  cfg.preset = 'manual';
+  updatePresetSelection('manual');
+  setManualSaveState('alteração manual pendente');
+}
+
+function scheduleManualSave() {
+  if (fillingForm || !cfg || presetApplyPending) return;
+  manualEditRevision += 1;
+  const revision = manualEditRevision;
+  clearTimeout(manualSaveTimer);
+  manualSaveTimer = setTimeout(() => saveManualRevision(revision), 650);
+}
+
+async function saveManualRevision(revision) {
+  if (!cfg || revision !== manualEditRevision) return;
+  if (manualSaveInFlight) {
+    scheduleManualSave();
+    return;
+  }
+  manualSaveInFlight = true;
+  setManualSaveState('salvando modo manual…');
+  try {
+    const payload = collect();
+    payload.preset = 'manual';
+    const data = await api('/api/config', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    if (revision === manualEditRevision) {
+      fill(data.config);
+      setManualSaveState('modo manual salvo', 'ok');
+    }
+  } catch (e) {
+    setManualSaveState(`erro ao salvar: ${e.message}`, 'err');
+  } finally {
+    manualSaveInFlight = false;
+    if (!presetApplyPending && cfg?.preset === 'manual' && revision !== manualEditRevision) {
+      clearTimeout(manualSaveTimer);
+      manualSaveTimer = setTimeout(() => saveManualRevision(manualEditRevision), 150);
+    }
+  }
+}
+
+function bindManualPersonalityControls() {
+  const custom = $('customPersonality');
+  if (custom) custom.addEventListener('input', () => { enterManualMode(); scheduleManualSave(); });
+  const profanity = $('profanity');
+  if (profanity) profanity.addEventListener('change', () => { enterManualMode(); scheduleManualSave(); });
+  const flirt = $('adultFlirt');
+  if (flirt) flirt.addEventListener('change', () => { enterManualMode(); scheduleManualSave(); });
+}
+
 function authHeaders(extra={}) { return { 'X-Panel-Key': key, ...extra }; }
 async function api(url, options={}) {
   options.headers = authHeaders(options.headers || {});
@@ -119,12 +199,18 @@ function makeSliders() {
     div.className = 'slider-item';
     div.innerHTML = `<div class="slider-title"><span>${label}</span><b id="${id}Out">0</b></div><input id="${id}" type="range" min="0" max="100">`;
     $('sliders').appendChild(div);
-    div.querySelector('input').addEventListener('input', e => $(id+'Out').textContent = e.target.value);
+    const input = div.querySelector('input');
+    input.addEventListener('input', e => {
+      $(id+'Out').textContent = e.target.value;
+      enterManualMode();
+    });
+    input.addEventListener('change', () => scheduleManualSave());
   }
 }
 
 function fill(c) {
-  cfg = c;
+  fillingForm = true;
+  cfg = { ...c };
   const ids = [
     'enabled','aiName','responseLength','profanity','adultFlirt','mentionUser','answerChance','emotesEnabled','emoteChance','emoteMaxCount',
     'cooldownSeconds','maxQueueAgeSeconds','queueSize','minMessageChars','ignoreCommands',
@@ -137,17 +223,21 @@ function fill(c) {
     if (el.type === 'checkbox') el.checked = Boolean(c[id]); else el.value = c[id];
   }
   for (const [id] of sliderDefs) {
-    $(id).value = c[id];
-    $(id+'Out').textContent = c[id];
+    const value = Number.isFinite(Number(c[id])) ? Number(c[id]) : 0;
+    $(id).value = value;
+    $(id+'Out').textContent = value;
   }
   $('answerChanceOut').textContent = `${c.answerChance}%`;
   if ($('emoteChanceOut')) $('emoteChanceOut').textContent = `${c.emoteChance ?? 70}%`;
   if ($('emoteList')) $('emoteList').value = (c.emoteList || []).join('\n');
   $('ignoreUsers').value = (c.ignoreUsers || []).join('\n');
+  updatePresetSelection(c.preset || 'manual');
+  fillingForm = false;
 }
 
 function collect() {
-  const out = { ...cfg };
+  const out = { ...(cfg || {}) };
+  out.preset = out.preset || 'manual';
   ['enabled','adultFlirt','mentionUser','emotesEnabled','ignoreCommands','ignoreBroadcaster','ignoreBots','preferQuestions','preferMentions','preferFlirtyMessages','avatarEnabled','ttsEnabled','localAiEnabled','localAiMentionOnly']
     .forEach(id => out[id] = $(id).checked);
   ['aiName','responseLength','customPersonality','avatarImageUrl','ttsVoice'].forEach(id => out[id] = $(id).value);
@@ -187,10 +277,13 @@ async function login() {
 }
 
 async function save() {
+  clearTimeout(manualSaveTimer);
+  while (manualSaveInFlight) await new Promise(resolve => setTimeout(resolve, 25));
   try {
     const data = await api('/api/config', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(collect()) });
     fill(data.config);
     await loadSetup();
+    setManualSaveState(data.config.preset === 'manual' ? 'modo manual salvo' : '', data.config.preset === 'manual' ? 'ok' : '');
     $('saveMsg').textContent = 'Configuração salva.';
     $('saveMsg').className = 'msg ok';
   } catch (e) {
@@ -200,12 +293,22 @@ async function save() {
 }
 
 async function applyPreset(name) {
+  presetApplyPending = true;
+  clearTimeout(manualSaveTimer);
+  manualEditRevision += 1;
   try {
+    while (manualSaveInFlight) await new Promise(resolve => setTimeout(resolve, 25));
+    clearTimeout(manualSaveTimer);
     const data = await api('/api/apply-preset/'+encodeURIComponent(name), {method:'POST'});
     fill(data.config);
-    $('saveMsg').textContent = `Preset ${name} aplicado e salvo.`;
+    setManualSaveState('');
+    $('saveMsg').textContent = `Preset ${presetLabel(name)} aplicado e salvo.`;
     $('saveMsg').className = 'msg ok';
-  } catch (e) { alert(e.message); }
+  } catch (e) {
+    alert(e.message);
+  } finally {
+    presetApplyPending = false;
+  }
 }
 
 async function refreshStatus() {
@@ -453,6 +556,7 @@ async function copyFrom(id, button) {
 
 makeSliders();
 setupPresetSearch();
+bindManualPersonalityControls();
 $('panelKey').value = key;
 $('loginBtn').addEventListener('click', login);
 $('panelKey').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
