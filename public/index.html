@@ -34,6 +34,7 @@
           <h3 class="preset-title">Personalidades prontas — 76 opções</h3>
           <div class="preset-tools"><input id="presetSearch" placeholder="Buscar personalidade..."><span id="presetCount"></span></div>
           <div class="preset-mode">Modo atual: <strong id="presetMode">Manual</strong><span id="manualSaveState"></span></div>
+          <p class="hint preset-hint">Clicar em uma personalidade pronta não zera nem altera os 76 controles manuais.</p>
           <div class="preset-buttons">
           <button data-preset="suave">😇 Suave</button>
           <button data-preset="normal">🙂 Normal</button>
@@ -123,7 +124,7 @@
             <label>Nome da IA<input id="aiName" maxlength="30"></label>
             <label>Tamanho<select id="responseLength"><option value="short">Curta</option><option value="medium">Média</option></select></label>
           </div>
-          <label>Personalidade personalizada<textarea id="customPersonality" rows="3" maxlength="220"></textarea></label>
+          <label>Personalidade personalizada<textarea id="customPersonality" rows="3" maxlength="1000"></textarea></label>
           <div class="language-box">
             <h3>🤬 Palavrões reais + emotes da Twitch</h3>
             <div class="two">

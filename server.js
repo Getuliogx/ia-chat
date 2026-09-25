@@ -426,18 +426,37 @@ const TRAIT_PROMPT_LABELS = {
 
 const ALL_TRAIT_KEYS = Object.keys(TRAIT_PROMPT_LABELS);
 
-const PERSONALITY_PRESET_KEYS = [...ALL_TRAIT_KEYS, 'profanity', 'adultFlirt', 'customPersonality'];
+// Selecionar uma personalidade pronta NÃO deve apagar os 76 controles manuais.
+// O botão escolhe a base textual/comportamental da personalidade e mantém todos
+// os sliders exatamente como o usuário deixou. Os sliders continuam sendo
+// ajustes manuais independentes e, quando alterados, o front muda para Manual.
+const PRESET_SELECTION_KEYS = [
+  'customPersonality', 'profanity', 'adultFlirt',
+  'emotesEnabled', 'emoteChance', 'emoteMaxCount'
+];
 
-function presetMatchesPersonality(value, presetName) {
+function presetMatchesSelection(value, presetName) {
   const preset = PRESETS[presetName];
   if (!preset) return false;
-  return PERSONALITY_PRESET_KEYS.every(key => {
-    const actual = value?.[key];
-    const expected = preset[key];
-    if (typeof expected === 'number') return Number(actual) === Number(expected);
-    if (typeof expected === 'boolean') return Boolean(actual) === expected;
-    return String(actual ?? '').trim() === String(expected ?? '').trim();
-  });
+  return PRESET_SELECTION_KEYS
+    .filter(key => Object.prototype.hasOwnProperty.call(preset, key))
+    .every(key => {
+      const actual = value?.[key];
+      const expected = preset[key];
+      if (typeof expected === 'number') return Number(actual) === Number(expected);
+      if (typeof expected === 'boolean') return Boolean(actual) === expected;
+      return String(actual ?? '').trim() === String(expected ?? '').trim();
+    });
+}
+
+function applyPresetKeepingManualTraits(current, presetName) {
+  const preset = PRESETS[presetName];
+  if (!preset) return null;
+  const next = { ...current, preset: presetName };
+  for (const key of PRESET_SELECTION_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(preset, key)) next[key] = preset[key];
+  }
+  return next;
 }
 
 
@@ -749,13 +768,13 @@ function sanitizeConfig(input = {}) {
     localAiTemperature: clampInt(input.localAiTemperature, 0, 100, base.localAiTemperature ?? 78),
     localAiTimeoutSeconds: clampInt(input.localAiTimeoutSeconds, 15, 180, base.localAiTimeoutSeconds ?? 60),
     ignoreUsers,
-    customPersonality: str(input.customPersonality, 220, base.customPersonality)
+    customPersonality: str(input.customPersonality, 1000, base.customPersonality)
   };
 
-  // Migração/correção: versões antigas mantinham o nome de um preset mesmo depois
-  // de os sliders serem alterados manualmente. Só mantém o nome se os valores
-  // realmente correspondem ao preset; caso contrário o modo é Manual.
-  if (sanitized.preset !== 'manual' && !presetMatchesPersonality(sanitized, sanitized.preset)) {
+  // Mantém o preset selecionado mesmo quando os sliders têm ajustes próprios.
+  // Só volta para Manual se os campos que definem o botão/preset não correspondem
+  // mais à personalidade escolhida (por exemplo, texto personalizado alterado).
+  if (sanitized.preset !== 'manual' && !presetMatchesSelection(sanitized, sanitized.preset)) {
     sanitized.preset = 'manual';
   }
   return sanitized;
@@ -1979,7 +1998,8 @@ app.put('/api/config', panelAuth, (req, res) => {
 app.post('/api/apply-preset/:name', panelAuth, (req, res) => {
   const name = req.params.name;
   if (!PRESETS[name]) return res.status(404).json({ error: 'Preset inválido.' });
-  const saved = setConfig({ ...config, ...PRESETS[name], preset: name });
+  const next = applyPresetKeepingManualTraits(config, name);
+  const saved = setConfig(next);
   res.json({ ok: true, config: saved, configVersion });
 });
 

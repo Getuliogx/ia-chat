@@ -302,7 +302,7 @@ async function applyPreset(name) {
     const data = await api('/api/apply-preset/'+encodeURIComponent(name), {method:'POST'});
     fill(data.config);
     setManualSaveState('');
-    $('saveMsg').textContent = `Preset ${presetLabel(name)} aplicado e salvo.`;
+    $('saveMsg').textContent = `Preset ${presetLabel(name)} selecionado e salvo sem alterar os 76 controles.`;
     $('saveMsg').className = 'msg ok';
   } catch (e) {
     alert(e.message);
